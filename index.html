@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Never Forget — Invoice Manager</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f6f8;color:#172033}button,input,select,textarea{font:inherit}button{cursor:pointer}.app{min-height:100vh}.top{position:sticky;top:0;z-index:10;background:#f5f6f8;padding:16px 14px 12px;display:flex;align-items:center;gap:10px}.brand small{display:block;font-size:9px;font-weight:800;letter-spacing:.14em;color:#8992a2}.brand h1{font-size:22px;letter-spacing:-.04em;margin:3px 0 0}.btn{border:0;border-radius:10px;padding:10px 13px;font-weight:750}.primary{background:#111827;color:#fff}.secondary{background:#fff;border:1px solid #dfe3e9;color:#354156}.top .btn{margin-left:auto}.content{max-width:920px;margin:auto;padding:0 13px 82px}.hero{background:#111827;color:#fff;border-radius:16px;padding:18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}.hero small{color:#b9c0cc;font-size:9px;font-weight:800;letter-spacing:.1em}.hero h2{margin:5px 0 0;font-size:18px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.card,.stat{background:#fff;border:1px solid #e2e5ea;border-radius:14px}.stat{padding:12px;display:flex;gap:9px;align-items:center}.stat i{width:34px;height:34px;border-radius:9px;background:#eef0f3;display:grid;place-items:center;font-style:normal}.stat small{display:block;color:#7c8697;font-size:10px}.stat b{display:block;margin-top:3px;font-size:14px}.section{padding:15px;display:flex;align-items:center;justify-content:space-between}.section h3{margin:0;font-size:15px}.section p{margin:4px 0 0;color:#7d8797;font-size:11px}.rows{border-top:1px solid #edf0f3}.row{min-height:68px;padding:11px 13px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #edf0f3}.row:last-child{border-bottom:0}.icon,.avatar{width:37px;height:37px;border-radius:10px;background:#eef0f3;display:grid;place-items:center;flex:none}.avatar{border-radius:50%;font-weight:800}.main{min-width:0;flex:1}.main b,.main span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.main b{font-size:13px}.main span{font-size:11px;color:#7d8797;margin-top:3px}.amount{text-align:right}.amount b{font-size:12px}.badge{display:inline-block;margin-top:4px;padding:3px 7px;border-radius:20px;background:#eef0f3;color:#667185;font-size:8px;font-weight:800;text-transform:uppercase}.badge.Paid{background:#e8f6ed;color:#18743b}.badge.Overdue{background:#fff0ee;color:#b13a31}.badge.Sent{background:#edf4ff;color:#2b63a9}.empty{text-align:center;padding:42px 18px}.empty .big{font-size:28px}.empty p{font-size:12px;color:#7d8797}.search{height:44px;background:#fff;border:1px solid #dfe3e9;border-radius:10px;display:flex;align-items:center;padding:0 12px;margin-bottom:12px}.search input{width:100%;border:0;outline:0;background:transparent}.form{padding:15px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{display:block;margin-bottom:12px}.field span{display:block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#737d8d;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;border:1px solid #dce1e8;border-radius:9px;padding:10px;background:#fff;outline:0}.field textarea{resize:vertical}.lineitems{margin:8px 0 14px}.item{display:grid;grid-template-columns:minmax(0,1fr) 58px 82px 78px 26px;gap:5px;align-items:center;margin-bottom:7px}.item input{width:100%;border:1px solid #dce1e8;border-radius:8px;padding:9px;background:#fff;min-width:0}.item .amt{font-size:11px;font-weight:750;text-align:right}.x{border:0;background:transparent;color:#7d8797;font-size:18px}.summary{padding:15px;margin-top:12px}.sumline{display:flex;justify-content:space-between;padding:5px 0;color:#687386;font-size:12px}.total{border-top:1px solid #e2e6eb;margin-top:7px;padding-top:12px;color:#111827;font-size:17px}.bottom{position:fixed;left:0;right:0;bottom:0;height:64px;background:#fff;border-top:1px solid #dfe3e9;display:flex;z-index:20;padding-bottom:env(safe-area-inset-bottom)}.bottom button{flex:1;border:0;background:transparent;color:#8490a1;font-size:9px;font-weight:750;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.bottom button.active{color:#111827}.modal{position:fixed;inset:0;background:#0007;z-index:50;display:flex;align-items:flex-end}.sheet{width:100%;max-height:82vh;overflow:auto;background:#fff;border-radius:18px 18px 0 0;padding:18px}.clientpick{width:100%;display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #edf0f3;background:#fff;border-radius:9px;margin-bottom:7px;text-align:left}.editorbar{position:sticky;top:0;z-index:15;background:#fff;border-bottom:1px solid #e2e5ea;padding:10px 13px;display:flex;align-items:center;gap:8px}.editorbar h1{font-size:17px;margin:0}.editorbar small{font-size:8px;color:#8992a2;font-weight:800}.editorbar .save{margin-left:auto}.editor{max-width:920px;margin:auto;padding:14px 13px 96px}.mobile-save{position:fixed;left:0;right:0;bottom:64px;background:#fffffff5;border-top:1px solid #e2e5ea;padding:8px 13px;z-index:18}.mobile-save button{width:100%}.notice{padding:11px 13px;background:#f0f3f6;border-radius:9px;color:#687386;font-size:11px;margin-top:8px}
+@media(min-width:800px){.bottom{display:none}.content,.editor{padding-bottom:40px}.stats{grid-template-columns:repeat(4,1fr)}.mobile-save{display:none}.top{padding:25px 36px}.content,.editor{max-width:980px}.item{grid-template-columns:minmax(0,1fr) 65px 95px 90px 30px}}
+@media(max-width:560px){.grid{grid-template-columns:1fr}.item{grid-template-columns:minmax(0,1fr) 48px 70px 65px 22px}.item input{font-size:11px;padding:8px}.hero .btn{padding:8px 9px}.hero h2{font-size:16px}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+(function(){
+"use strict";
+const root=document.getElementById("root");
+const KEY="never_forget_v1";
+const defaults={
+ settings:{businessName:"Your Business",owner:"",email:"",phone:"",address:"",currency:"USD",prefix:"INV"},
+ clients:[],
+ invoices:[]
+};
+function load(){
+ try{return Object.assign({},defaults,JSON.parse(localStorage.getItem(KEY)||"{}"))}
+ catch(e){return JSON.parse(JSON.stringify(defaults))}
+}
+let db=load();
+let page="dashboard";
+let editId=null;
+let searchText="";
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function today(){return new Date().toISOString().slice(0,10)}
+function esc(v){
+ return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+}
+function money(n){
+ try{return new Intl.NumberFormat(undefined,{style:"currency",currency:db.settings.currency||"USD"}).format(Number(n)||0)}
+ catch(e){return "$"+(Number(n)||0).toFixed(2)}
+}
+function totalFor(i){
+ const sub=(i.items||[]).reduce((a,x)=>a+(Number(x.qty)||0)*(Number(x.rate)||0),0);
+ const disc=Number(i.discount)||0;
+ const taxBase=Math.max(0,sub-disc);
+ const tax=taxBase*(Number(i.tax)||0)/100;
+ return {sub,disc,tax,total:taxBase+tax}
+}
+function nextNumber(){
+ return (db.settings.prefix||"INV")+"-"+String(db.invoices.length+1).padStart(4,"0")
+}
+function nav(){
+ const items=[["dashboard","⌂","Home"],["invoices","▤","Invoices"],["clients","♙","Clients"],["settings","⚙","Settings"]];
+ return '<nav class="bottom">'+items.map(function(x){
+  return '<button class="'+(page===x[0]?"active":"")+'" data-nav="'+x[0]+'"><b>'+x[1]+'</b><span>'+x[2]+'</span></button>'
+ }).join("")+"</nav>"
+}
+function top(title){
+ return '<header class="top"><div class="brand"><small>NEVER FORGET</small><h1>'+esc(title)+'</h1></div><button class="btn primary" data-new>＋ <span>New invoice</span></button></header>'
+}
+function row(i){
+ const t=totalFor(i);
+ return '<div class="row" data-open="'+esc(i.id)+'"><div class="icon">▤</div><div class="main"><b>'+esc(i.number)+'</b><span>'+esc(i.clientName||"No client")+'</span></div><div class="amount"><b>'+money(t.total)+'</b><span class="badge '+esc(i.status)+'">'+esc(i.status)+'</span></div><button class="x" title="Print" data-print="'+esc(i.id)+'" onclick="event.stopPropagation()">↓</button></div>'
+}
+function dashboard(){
+ const totals=db.invoices.reduce(function(a,i){const t=totalFor(i);a.inv+=t.total;if(i.status==="Paid")a.paid+=t.total;if(!["Paid","Cancelled"].includes(i.status))a.out+=t.total;if(i.status==="Overdue")a.over+=t.total;return a},{inv:0,paid:0,out:0,over:0});
+ return top("Dashboard")+
+ '<main class="content"><section class="hero"><div><small>YOUR INVOICE WORKSPACE</small><h2>Keep your books simple.</h2></div><button class="btn secondary" data-new>＋ Invoice</button></section>'+
+ '<section class="stats">'+
+ stat("▤","Invoiced",totals.inv)+stat("✓","Paid",totals.paid)+stat("◷","Outstanding",totals.out)+stat("!","Overdue",totals.over)+
+ '</section><section class="card"><div class="section"><div><h3>Recent invoices</h3><p>Your latest records</p></div></div><div class="rows">'+
+ (db.invoices.length?db.invoices.slice(0,8).map(row).join(""):'<div class="empty"><div class="big">▤</div><h3>No invoices yet</h3><p>Create your first invoice and it will appear here.</p><button class="btn primary" data-new>＋ Create invoice</button></div>')+
+ '</div></section></main>'+nav()
+}
+function stat(icon,label,value){
+ return '<div class="stat"><i>'+icon+'</i><div><small>'+label+'</small><b>'+money(value)+'</b></div></div>'
+}
+function invoicesPage(){
+ const list=db.invoices.filter(function(i){
+  const q=searchText.toLowerCase();
+  return !q||String(i.number+" "+i.clientName+" "+i.status).toLowerCase().includes(q)
+ });
+ return top("Invoices")+'<main class="content"><div class="search"><input id="search" value="'+esc(searchText)+'" placeholder="Search invoices"></div><section class="card"><div class="section"><div><h3>All invoices</h3><p>'+list.length+' record'+(list.length===1?"":"s")+'</p></div></div><div class="rows">'+
+ (list.length?list.map(row).join(""):'<div class="empty"><p>No matching invoices.</p></div>')+'</div></section></main>'+nav()
+}
+function clientsPage(){
+ return top("Clients")+'<main class="content"><section class="card form"><div class="section" style="padding:0 0 14px"><div><h3>Add client</h3><p>Save customers for quick invoice creation.</p></div></div>'+
+ field("Name","cn","")+" "+field("Email","ce","")+" "+field("Phone","cp","")+
+ '<button class="btn primary" id="addClient">＋ Add client</button></section><section class="card" style="margin-top:12px"><div class="section"><div><h3>Saved clients</h3><p>'+db.clients.length+' client'+(db.clients.length===1?"":"s")+'</p></div></div><div class="rows">'+
+ (db.clients.length?db.clients.map(function(c){return '<div class="row"><div class="avatar">'+esc((c.name||"?").charAt(0).toUpperCase())+'</div><div class="main"><b>'+esc(c.name)+'</b><span>'+esc(c.email||"No email")+(c.phone?" · "+esc(c.phone):"")+'</span></div><button class="x" data-delclient="'+esc(c.id)+'">×</button></div>'}).join(""):'<div class="empty"><p>No clients yet.</p></div>')+
+ '</div></section></main>'+nav()
+}
+function field(label,id,value){
+ return '<label class="field"><span>'+esc(label)+'</span><input id="'+esc(id)+'" value="'+esc(value||"")+'"></label>'
+}
+function settingsPage(){
+ return top("Business settings")+'<main class="content"><section class="card form">'+
+ field("Business name","businessName",db.settings.businessName)+
+ field("Contact name","owner",db.settings.owner)+
+ field("Email","email",db.settings.email)+
+ field("Phone","phone",db.settings.phone)+
+ '<label class="field"><span>Currency</span><select id="currency">'+["USD","CAD","GBP","EUR","AUD"].map(function(c){return '<option value="'+c+'" '+(c===db.settings.currency?"selected":"")+'>'+c+'</option>'}).join("")+'</select></label>'+
+ field("Invoice prefix","prefix",db.settings.prefix)+
+ '<label class="field"><span>Business address</span><textarea id="address" rows="4">'+esc(db.settings.address)+'</textarea></label>'+
+ '<button class="btn primary" id="saveSettings">Save settings</button><div class="notice">✓ Your records stay in this browser. There is no payment processor and no account required.</div>'+
+ '</section></main>'+nav()
+}
+function invoiceEditor(){
+ const f=db.invoices.find(function(x){return x.id===editId})||newInvoiceObject();
+ const t=totalFor(f);
+ return '<div class="editorbar"><button class="btn secondary" id="back">‹ Back</button><div><small>INVOICE</small><h1>'+esc(f.number)+'</h1></div><button class="btn primary save" id="saveInvoice">Save</button></div>'+
+ '<main class="editor"><section class="card form"><div class="grid">'+
+ field("Invoice number","number",f.number)+
+ '<label class="field"><span>Status</span><select id="status">'+["Draft","Sent","Paid","Overdue","Cancelled"].map(function(s){return '<option '+(s===f.status?"selected":"")+'>'+s+'</option>'}).join("")+'</select></label>'+
+ field("Issue date","issueDate",f.issueDate)+field("Due date","dueDate",f.dueDate)+
+ '</div><div class="section" style="padding:5px 0 14px"><div><h3>Client</h3><p>'+esc(f.clientName||"No client selected")+'</p></div><button class="btn secondary" id="pickClient">Choose</button></div>'+
+ '<div class="grid">'+field("Client name","clientName",f.clientName)+field("Client email","clientEmail",f.clientEmail)+'</div>'+
+ '<div class="section" style="padding:10px 0 8px"><div><h3>Items</h3><p>Products or services</p></div><button class="btn secondary" id="addItem">＋ Add item</button></div>'+
+ '<div class="lineitems">'+(f.items||[]).map(function(x){
+  return '<div class="item"><input data-item="'+esc(x.id)+'" data-key="description" value="'+esc(x.description)+'" placeholder="Description"><input type="number" min="0" step="1" data-item="'+esc(x.id)+'" data-key="qty" value="'+esc(x.qty)+'"><input type="number" min="0" step=".01" data-item="'+esc(x.id)+'" data-key="rate" value="'+esc(x.rate)+'"><span class="amt">'+money((Number(x.qty)||0)*(Number(x.rate)||0))+'</span><button class="x" data-remove="'+esc(x.id)+'">×</button></div>'
+ }).join("")+'</div>'+
+ '<div class="grid">'+field("Discount","discount",f.discount)+field("Tax %","tax",f.tax)+'</div>'+
+ '<label class="field"><span>Notes</span><textarea id="notes" rows="4">'+esc(f.notes)+'</textarea></label></section>'+
+ '<section class="card summary"><div class="sumline"><span>Subtotal</span><b>'+money(t.sub)+'</b></div><div class="sumline"><span>Discount</span><b>-'+money(t.disc)+'</b></div><div class="sumline"><span>Tax</span><b>'+money(t.tax)+'</b></div><div class="sumline total"><span>Total</span><b>'+money(t.total)+'</b></div></section></main>'+
+ '<div class="mobile-save"><button class="btn primary" id="saveInvoice2">✓ Save invoice</button></div>'
+}
+function newInvoiceObject(){
+ return {id:uid(),number:nextNumber(),clientId:"",clientName:"",clientEmail:"",issueDate:today(),dueDate:today(),status:"Draft",notes:"Thank you for your business.",items:[{id:uid(),description:"",qty:1,rate:0}],discount:0,tax:0}
+}
+function openNew(){const x=newInvoiceObject();db.invoices.unshift(x);editId=x.id;save();render()}
+function readEditor(){
+ const f=db.invoices.find(function(x){return x.id===editId});if(!f)return;
+ ["number","status","issueDate","dueDate","clientName","clientEmail","discount","tax","notes"].forEach(function(k){
+  const el=document.getElementById(k);if(el)f[k]=el.value;
+ });
+ const t=totalFor(f);f.subtotal=t.sub;f.taxAmount=t.tax;f.total=t.total;save()
+}
+function render(){
+ root.innerHTML=editId?invoiceEditor():page==="dashboard"?dashboard():page==="invoices"?invoicesPage():page==="clients"?clientsPage():settingsPage();
+ bind();
+}
+function bind(){
+ document.querySelectorAll("[data-nav]").forEach(function(b){b.onclick=function(){page=b.dataset.nav;editId=null;render()}});
+ document.querySelectorAll("[data-new]").forEach(function(b){b.onclick=openNew});
+ document.querySelectorAll("[data-open]").forEach(function(b){b.onclick=function(){editId=b.dataset.open;render()}});
+ document.querySelectorAll("[data-print]").forEach(function(b){b.onclick=function(){printInvoice(b.dataset.print)}});
+ const s=document.getElementById("search");
+ if(s){s.oninput=function(){searchText=s.value;render();const n=document.getElementById("search");n.focus();n.setSelectionRange(n.value.length,n.value.length)}}
+ const add=document.getElementById("addClient");
+ if(add)add.onclick=function(){const n=document.getElementById("cn").value.trim();if(!n){alert("Enter a client name.");return}db.clients.unshift({id:uid(),name:n,email:document.getElementById("ce").value.trim(),phone:document.getElementById("cp").value.trim()});save();render()};
+ document.querySelectorAll("[data-delclient]").forEach(function(b){b.onclick=function(){if(confirm("Delete this client?")){db.clients=db.clients.filter(function(c){return c.id!==b.dataset.delclient});save();render()}}});
+ const ss=document.getElementById("saveSettings");
+ if(ss)ss.onclick=function(){["businessName","owner","email","phone","prefix"].forEach(function(k){db.settings[k]=document.getElementById(k).value});db.settings.currency=document.getElementById("currency").value;db.settings.address=document.getElementById("address").value;save();alert("Settings saved.");render()};
+ const back=document.getElementById("back");if(back)back.onclick=function(){editId=null;page="invoices";render()};
+ const saveBtn=document.getElementById("saveInvoice");if(saveBtn)saveBtn.onclick=function(){readEditor();editId=null;page="invoices";render()};
+ const saveBtn2=document.getElementById("saveInvoice2");if(saveBtn2)saveBtn2.onclick=function(){readEditor();editId=null;page="invoices";render()};
+ const addItem=document.getElementById("addItem");if(addItem)addItem.onclick=function(){const f=db.invoices.find(function(x){return x.id===editId});f.items.push({id:uid(),description:"",qty:1,rate:0});save();render()};
+ document.querySelectorAll("[data-remove]").forEach(function(b){b.onclick=function(){const f=db.invoices.find(function(x){return x.id===editId});if(f.items.length>1){f.items=f.items.filter(function(x){return x.id!==b.dataset.remove});save();render()}}});
+ document.querySelectorAll("[data-item]").forEach(function(el){el.onchange=function(){const f=db.invoices.find(function(x){return x.id===editId});const x=f.items.find(function(a){return a.id===el.dataset.item});x[el.dataset.key]=el.value;save();render()}});
+ const pick=document.getElementById("pickClient");if(pick)pick.onclick=showClientPicker;
+}
+function showClientPicker(){
+ const m=document.createElement("div");m.className="modal";m.id="clientModal";
+ m.innerHTML='<div class="sheet"><div class="section" style="padding:0 0 14px"><div><h3>Choose client</h3><p>Select a saved customer.</p></div><button class="x" id="closePicker">×</button></div>'+
+ (db.clients.length?db.clients.map(function(c){return '<button class="clientpick" data-pick="'+esc(c.id)+'"><div class="avatar">'+esc((c.name||"?").charAt(0).toUpperCase())+'</div><div class="main"><b>'+esc(c.name)+'</b><span>'+esc(c.email||"No email")+'</span></div>›</button>'}).join(""):'<p>No saved clients yet. Add one from the Clients tab.</p>')+'</div>';
+ document.body.appendChild(m);
+ document.getElementById("closePicker").onclick=function(){m.remove()};
+ m.addEventListener("click",function(e){if(e.target===m)m.remove()});
+ m.querySelectorAll("[data-pick]").forEach(function(b){b.onclick=function(){const c=db.clients.find(function(x){return x.id===b.dataset.pick});const f=db.invoices.find(function(x){return x.id===editId});f.clientId=c.id;f.clientName=c.name;f.clientEmail=c.email||"";save();m.remove();render()}});
+}
+function printInvoice(id){
+ const i=db.invoices.find(function(x){return x.id===id});if(!i)return;
+ const t=totalFor(i);
+ const items=(i.items||[]).map(function(x){return '<tr><td>'+esc(x.description||"")+'</td><td>'+esc(x.qty)+'</td><td>'+money(x.rate)+'</td><td>'+money((Number(x.qty)||0)*(Number(x.rate)||0))+'</td></tr>'}).join("");
+ const w=window.open("","_blank");if(!w){alert("Your browser blocked the invoice window. Allow pop-ups and try again.");return}
+ w.document.write('<!doctype html><html><head><title>'+esc(i.number)+'</title><style>body{font-family:Arial,sans-serif;color:#172033;margin:45px}header{display:flex;justify-content:space-between;border-bottom:2px solid #172033;padding-bottom:18px}h1{margin:0;font-size:28px}small{color:#667085}table{width:100%;border-collapse:collapse;margin-top:35px}th,td{text-align:left;padding:10px;border-bottom:1px solid #ddd}th:last-child,td:last-child{text-align:right}.totals{margin-left:auto;width:260px;margin-top:25px}.line{display:flex;justify-content:space-between;padding:6px}.total{border-top:2px solid #172033;margin-top:6px;padding-top:12px;font-size:20px;font-weight:bold}@media print{button{display:none}}</style></head><body><header><div><h1>'+esc(db.settings.businessName||"Your Business")+'</h1><small>'+esc(db.settings.owner)+'<br>'+esc(db.settings.address)+'<br>'+esc(db.settings.phone)+' · '+esc(db.settings.email)+'</small></div><div style="text-align:right"><h1>INVOICE</h1><small>'+esc(i.number)+'<br>Issued: '+esc(i.issueDate)+'<br>Due: '+esc(i.dueDate)+'</small></div></header><h3 style="margin-top:30px">Bill to</h3><div>'+esc(i.clientName||"Client")+'<br>'+esc(i.clientEmail||"")+'</div><table><thead><tr><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>'+items+'</tbody></table><div class="totals"><div class="line"><span>Subtotal</span><span>'+money(t.sub)+'</span></div><div class="line"><span>Discount</span><span>-'+money(t.disc)+'</span></div><div class="line"><span>Tax</span><span>'+money(t.tax)+'</span></div><div class="line total"><span>Total</span><span>'+money(t.total)+'</span></div></div><p style="margin-top:45px">'+esc(i.notes||"")+'</p><button onclick="window.print()">Print / Save PDF</button></body></html>');
+ w.document.close();w.focus()
+}
+render();
+})();
+</script>
+</body>
+</html>
