@@ -1,0 +1,895 @@
+name: Build Invoice Maker v4 APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Create Android project
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf app
+          rm -f build.gradle
+          rm -f settings.gradle
+
+          mkdir -p app/src/main/java/com/invoicemaker/app
+          mkdir -p app/src/main/assets
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
+
+          cp index.html app/src/main/assets/index.html
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "InvoiceMaker"
+          include(":app")
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.invoicemaker.app'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId "com.invoicemaker.app"
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 40
+                  versionName "4.0.0"
+              }
+          }
+          EOF
+
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:statusBarColor">#111827</item>
+                  <item name="android:navigationBarColor">#111827</item>
+                  <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:windowActionModeOverlay">true</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > app/src/main/res/drawable/app_icon.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+
+              <path
+                  android:fillColor="#111827"
+                  android:pathData="M0,0h108v108h-108z"/>
+
+              <path
+                  android:fillColor="#FFFFFF"
+                  android:pathData="M27,24h54v60h-54z"/>
+
+              <path
+                  android:fillColor="#111827"
+                  android:pathData="M35,35h38v6h-38zM35,48h38v6h-38zM35,61h25v6h-25z"/>
+          </vector>
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <application
+                  android:allowBackup="true"
+                  android:label="Invoice Maker"
+                  android:icon="@drawable/app_icon"
+                  android:theme="@style/AppTheme">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:screenOrientation="portrait"
+                      android:exported="true">
+
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+
+                  </activity>
+
+              </application>
+
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/invoicemaker/app/MainActivity.java <<'EOF'
+          package com.invoicemaker.app;
+
+          import android.app.Activity;
+          import android.app.Dialog;
+          import android.content.Intent;
+          import android.graphics.Bitmap;
+          import android.graphics.BitmapFactory;
+          import android.graphics.Canvas;
+          import android.graphics.Color;
+          import android.graphics.Paint;
+          import android.graphics.Rect;
+          import android.graphics.Typeface;
+          import android.graphics.pdf.PdfDocument;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.os.Environment;
+          import android.view.ViewGroup;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.Toast;
+
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+
+          import java.io.File;
+          import java.io.FileOutputStream;
+          import java.io.InputStream;
+
+          public class MainActivity extends Activity {
+
+              private WebView webView;
+              private ValueCallback<Uri[]> fileCallback;
+              private static final int FILE_REQUEST = 1001;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  webView = new WebView(this);
+                  setContentView(webView);
+
+                  WebSettings settings = webView.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
+                  settings.setAllowFileAccess(true);
+                  settings.setAllowContentAccess(true);
+
+                  webView.setWebViewClient(new WebViewClient());
+
+                  webView.addJavascriptInterface(
+                      new AndroidBridge(),
+                      "Android"
+                  );
+
+                  webView.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public boolean onShowFileChooser(
+                              WebView webView,
+                              ValueCallback<Uri[]> newCallback,
+                              FileChooserParams params) {
+
+                          if (fileCallback != null) {
+                              fileCallback.onReceiveValue(null);
+                          }
+
+                          fileCallback = newCallback;
+
+                          try {
+                              startActivityForResult(
+                                  params.createIntent(),
+                                  FILE_REQUEST
+                              );
+                              return true;
+                          } catch (Exception e) {
+                              fileCallback = null;
+
+                              Toast.makeText(
+                                  MainActivity.this,
+                                  "Unable to open file picker",
+                                  Toast.LENGTH_SHORT
+                              ).show();
+
+                              return false;
+                          }
+                      }
+                  });
+
+                  webView.loadUrl("file:///android_asset/index.html");
+              }
+
+              public class AndroidBridge {
+
+                  @JavascriptInterface
+                  public void previewDocument(final String json) {
+                      runOnUiThread(() -> {
+                          try {
+                              showPdfPreview(json);
+                          } catch (Exception e) {
+                              Toast.makeText(
+                                  MainActivity.this,
+                                  "Unable to create PDF: " + e.getMessage(),
+                                  Toast.LENGTH_LONG
+                              ).show();
+                          }
+                      });
+                  }
+              }
+
+              private void showPdfPreview(String json) throws Exception {
+
+                  JSONObject data = new JSONObject(json);
+
+                  PdfDocument document = new PdfDocument();
+
+                  int pageWidth = 2550;
+                  int pageHeight = 3300;
+
+                  PdfDocument.PageInfo pageInfo =
+                      new PdfDocument.PageInfo.Builder(
+                          pageWidth,
+                          pageHeight,
+                          1
+                      ).create();
+
+                  PdfDocument.Page page =
+                      document.startPage(pageInfo);
+
+                  Canvas canvas = page.getCanvas();
+
+                  Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+                  paint.setColor(Color.WHITE);
+                  canvas.drawRect(
+                      0,
+                      0,
+                      pageWidth,
+                      pageHeight,
+                      paint
+                  );
+
+                  paint.setColor(Color.rgb(17, 24, 39));
+                  paint.setTypeface(
+                      Typeface.create(
+                          Typeface.DEFAULT,
+                          Typeface.BOLD
+                      )
+                  );
+
+                  paint.setTextSize(115);
+
+                  String title =
+                      data.optString(
+                          "title",
+                          "INVOICE"
+                      );
+
+                  canvas.drawText(
+                      title,
+                      150,
+                      220,
+                      paint
+                  );
+
+                  JSONObject business =
+                      data.optJSONObject("business");
+
+                  paint.setTextSize(54);
+
+                  int y = 330;
+
+                  if (business != null) {
+
+                      String businessName =
+                          business.optString("name");
+
+                      if (!businessName.isEmpty()) {
+                          canvas.drawText(
+                              businessName,
+                              150,
+                              y,
+                              paint
+                          );
+                          y += 70;
+                      }
+
+                      paint.setTypeface(Typeface.DEFAULT);
+                      paint.setTextSize(42);
+
+                      String owner =
+                          business.optString("owner");
+
+                      String phone =
+                          business.optString("phone");
+
+                      String email =
+                          business.optString("email");
+
+                      String address =
+                          business.optString("address");
+
+                      if (!owner.isEmpty()) {
+                          canvas.drawText(
+                              owner,
+                              150,
+                              y,
+                              paint
+                          );
+                          y += 55;
+                      }
+
+                      if (!phone.isEmpty()) {
+                          canvas.drawText(
+                              phone,
+                              150,
+                              y,
+                              paint
+                          );
+                          y += 55;
+                      }
+
+                      if (!email.isEmpty()) {
+                          canvas.drawText(
+                              email,
+                              150,
+                              y,
+                              paint
+                          );
+                          y += 55;
+                      }
+
+                      if (!address.isEmpty()) {
+                          canvas.drawText(
+                              address,
+                              150,
+                              y,
+                              paint
+                          );
+                      }
+                  }
+
+                  paint.setColor(Color.rgb(17, 24, 39));
+                  paint.setTypeface(
+                      Typeface.create(
+                          Typeface.DEFAULT,
+                          Typeface.BOLD
+                      )
+                  );
+                  paint.setTextSize(48);
+
+                  int rightX = 1600;
+
+                  canvas.drawText(
+                      "Invoice #: " +
+                      data.optString("number"),
+                      rightX,
+                      330,
+                      paint
+                  );
+
+                  canvas.drawText(
+                      "Date: " +
+                      data.optString("issueDate"),
+                      rightX,
+                      400,
+                      paint
+                  );
+
+                  canvas.drawText(
+                      "Due: " +
+                      data.optString("dueDate"),
+                      rightX,
+                      470,
+                      paint
+                  );
+
+                  paint.setTypeface(Typeface.DEFAULT);
+
+                  String client =
+                      data.optString("clientName");
+
+                  if (!client.isEmpty()) {
+
+                      paint.setTypeface(
+                          Typeface.create(
+                              Typeface.DEFAULT,
+                              Typeface.BOLD
+                          )
+                      );
+
+                      paint.setTextSize(46);
+
+                      canvas.drawText(
+                          "Bill To",
+                          150,
+                          720,
+                          paint
+                      );
+
+                      paint.setTypeface(Typeface.DEFAULT);
+
+                      canvas.drawText(
+                          client,
+                          150,
+                          790,
+                          paint
+                      );
+
+                      String clientEmail =
+                          data.optString("clientEmail");
+
+                      if (!clientEmail.isEmpty()) {
+                          canvas.drawText(
+                              clientEmail,
+                              150,
+                              850,
+                              paint
+                          );
+                      }
+                  }
+
+                  int tableTop = 1020;
+
+                  paint.setColor(Color.rgb(17, 24, 39));
+
+                  canvas.drawRect(
+                      120,
+                      tableTop,
+                      2430,
+                      tableTop + 90,
+                      paint
+                  );
+
+                  paint.setColor(Color.WHITE);
+                  paint.setTypeface(
+                      Typeface.create(
+                          Typeface.DEFAULT,
+                          Typeface.BOLD
+                      )
+                  );
+                  paint.setTextSize(40);
+
+                  canvas.drawText(
+                      "Description",
+                      160,
+                      tableTop + 60,
+                      paint
+                  );
+
+                  canvas.drawText(
+                      "Qty",
+                      1550,
+                      tableTop + 60,
+                      paint
+                  );
+
+                  canvas.drawText(
+                      "Rate",
+                      1770,
+                      tableTop + 60,
+                      paint
+                  );
+
+                  canvas.drawText(
+                      "Amount",
+                      2110,
+                      tableTop + 60,
+                      paint
+                  );
+
+                  JSONArray items =
+                      data.optJSONArray("items");
+
+                  int itemY = tableTop + 160;
+
+                  paint.setColor(Color.BLACK);
+                  paint.setTypeface(Typeface.DEFAULT);
+                  paint.setTextSize(38);
+
+                  if (items != null) {
+                      for (
+                          int i = 0;
+                          i < items.length();
+                          i++
+                      ) {
+
+                          JSONObject item =
+                              items.getJSONObject(i);
+
+                          String description =
+                              item.optString(
+                                  "description"
+                              );
+
+                          double qty =
+                              item.optDouble(
+                                  "qty",
+                                  0
+                              );
+
+                          double rate =
+                              item.optDouble(
+                                  "rate",
+                                  0
+                              );
+
+                          double amount =
+                              item.optDouble(
+                                  "amount",
+                                  qty * rate
+                              );
+
+                          if (
+                              description.length() > 60
+                          ) {
+                              description =
+                                  description.substring(
+                                      0,
+                                      57
+                                  ) + "...";
+                          }
+
+                          canvas.drawText(
+                              description,
+                              160,
+                              itemY,
+                              paint
+                          );
+
+                          canvas.drawText(
+                              formatNumber(qty),
+                              1550,
+                              itemY,
+                              paint
+                          );
+
+                          canvas.drawText(
+                              money(rate),
+                              1770,
+                              itemY,
+                              paint
+                          );
+
+                          canvas.drawText(
+                              money(amount),
+                              2110,
+                              itemY,
+                              paint
+                          );
+
+                          itemY += 80;
+
+                          if (itemY > 2500) {
+                              break;
+                          }
+                      }
+                  }
+
+                  int totalsY =
+                      Math.max(
+                          itemY + 100,
+                          2200
+                      );
+
+                  paint.setTextSize(42);
+
+                  double subtotal =
+                      data.optDouble(
+                          "subtotal",
+                          0
+                      );
+
+                  double discount =
+                      data.optDouble(
+                          "discount",
+                          0
+                      );
+
+                  double tax =
+                      data.optDouble(
+                          "tax",
+                          0
+                      );
+
+                  double total =
+                      data.optDouble(
+                          "total",
+                          0
+                      );
+
+                  canvas.drawText(
+                      "Subtotal",
+                      1750,
+                      totalsY,
+                      paint
+                  );
+
+                  canvas.drawText(
+                      money(subtotal),
+                      2150,
+                      totalsY,
+                      paint
+                  );
+
+                  totalsY += 70;
+
+                  if (discount != 0) {
+                      canvas.drawText(
+                          "Discount",
+                          1750,
+                          totalsY,
+                          paint
+                      );
+
+                      canvas.drawText(
+                          "-" + money(discount),
+                          2150,
+                          totalsY,
+                          paint
+                      );
+
+                      totalsY += 70;
+                  }
+
+                  if (tax != 0) {
+                      canvas.drawText(
+                          "Tax",
+                          1750,
+                          totalsY,
+                          paint
+                      );
+
+                      canvas.drawText(
+                          money(tax),
+                          2150,
+                          totalsY,
+                          paint
+                      );
+
+                      totalsY += 70;
+                  }
+
+                  paint.setTypeface(
+                      Typeface.create(
+                          Typeface.DEFAULT,
+                          Typeface.BOLD
+                      )
+                  );
+
+                  paint.setTextSize(54);
+
+                  canvas.drawText(
+                      data.optString(
+                          "totalLabel",
+                          "Total"
+                      ),
+                      1750,
+                      totalsY + 20,
+                      paint
+                  );
+
+                  canvas.drawText(
+                      money(total),
+                      2150,
+                      totalsY + 20,
+                      paint
+                  );
+
+                  String notes =
+                      data.optString("notes");
+
+                  if (!notes.isEmpty()) {
+
+                      paint.setTypeface(
+                          Typeface.DEFAULT
+                      );
+
+                      paint.setTextSize(36);
+
+                      canvas.drawText(
+                          "Notes:",
+                          150,
+                          2850,
+                          paint
+                      );
+
+                      String shortNotes = notes;
+
+                      if (
+                          shortNotes.length() > 120
+                      ) {
+                          shortNotes =
+                              shortNotes.substring(
+                                  0,
+                                  117
+                              ) + "...";
+                      }
+
+                      canvas.drawText(
+                          shortNotes,
+                          150,
+                          2910,
+                          paint
+                      );
+                  }
+
+                  document.finishPage(page);
+
+                  File cacheFile =
+                      new File(
+                          getCacheDir(),
+                          "invoice-preview.pdf"
+                      );
+
+                  FileOutputStream output =
+                      new FileOutputStream(
+                          cacheFile
+                      );
+
+                  document.writeTo(output);
+
+                  output.close();
+                  document.close();
+
+                  Toast.makeText(
+                      this,
+                      "High-resolution PDF created",
+                      Toast.LENGTH_SHORT
+                  ).show();
+
+                  Intent intent =
+                      new Intent(
+                          Intent.ACTION_VIEW
+                      );
+
+                  intent.setDataAndType(
+                      Uri.fromFile(cacheFile),
+                      "application/pdf"
+                  );
+
+                  intent.addFlags(
+                      Intent.FLAG_GRANT_READ_URI_PERMISSION
+                  );
+
+                  try {
+                      startActivity(intent);
+                  } catch (Exception e) {
+                      Toast.makeText(
+                          this,
+                          "PDF created but no PDF viewer was found.",
+                          Toast.LENGTH_LONG
+                      ).show();
+                  }
+              }
+
+              private String money(double value) {
+                  return String.format(
+                      "$%.2f",
+                      value
+                  );
+              }
+
+              private String formatNumber(double value) {
+                  if (
+                      value ==
+                      Math.floor(value)
+                  ) {
+                      return String.format(
+                          "%.0f",
+                          value
+                      );
+                  }
+
+                  return String.format(
+                      "%.2f",
+                      value
+                  );
+              }
+
+              @Override
+              protected void onActivityResult(
+                      int requestCode,
+                      int resultCode,
+                      Intent data) {
+
+                  if (
+                      requestCode ==
+                      FILE_REQUEST
+                  ) {
+
+                      Uri[] result = null;
+
+                      if (
+                          resultCode == RESULT_OK &&
+                          data != null &&
+                          data.getData() != null
+                      ) {
+                          result =
+                              new Uri[]{
+                                  data.getData()
+                              };
+                      }
+
+                      if (
+                          fileCallback != null
+                      ) {
+                          fileCallback
+                              .onReceiveValue(
+                                  result
+                              );
+
+                          fileCallback = null;
+                      }
+
+                      return;
+                  }
+
+                  super.onActivityResult(
+                      requestCode,
+                      resultCode,
+                      data
+                  );
+              }
+
+              @Override
+              public void onBackPressed() {
+                  if (webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      super.onBackPressed();
+                  }
+              }
+          }
+          EOF
+
+      - name: Build APK
+        run: gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Invoice-Maker-v4-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
