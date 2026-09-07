@@ -29,10 +29,7 @@ jobs:
         shell: bash
         run: |
           set -e
-
-          rm -rf app
-          rm -f build.gradle
-          rm -f settings.gradle
+          rm -rf app build.gradle settings.gradle
 
           mkdir -p app/src/main/java/com/invoicemaker/app
           mkdir -p app/src/main/assets
@@ -40,40 +37,6 @@ jobs:
           mkdir -p app/src/main/res/drawable
 
           cp index.html app/src/main/assets/index.html
-
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path("app/src/main/assets/index.html")
-          s = p.read_text(encoding="utf-8")
-
-          s = s.replace("Never Forget", "Invoice Maker")
-
-          versions = [
-              'const APP_VERSION="3.0.0";',
-              'const APP_VERSION="3.1.0 APK";',
-              'const APP_VERSION="3.2.0";',
-              'const APP_VERSION="3.2.1 APK";'
-          ]
-
-          for old in versions:
-              s = s.replace(
-                  old,
-                  'const APP_VERSION="3.2.2 APK";'
-              )
-
-          old = ''' const w=window.open("","_blank");if(!w){alert("Allow pop-ups for this site and try again.");return}w.document.open();w.document.write(out);w.document.close();w.focus();setTimeout(()=>{try{w.print()}catch(e){}},500)
-          }'''
-
-          new = ''' if(window.Android && typeof Android.printHtml==="function"){Android.printHtml(out);return}
-           const w=window.open("","_blank");if(!w){alert("Allow pop-ups for this site and try again.");return}w.document.open();w.document.write(out);w.document.close();w.focus();setTimeout(()=>{try{w.print()}catch(e){}},500)
-          }'''
-
-          if old in s:
-              s = s.replace(old, new)
-
-          p.write_text(s, encoding="utf-8")
-          PY
 
           cat > settings.gradle <<'EOF'
           pluginManagement {
@@ -85,10 +48,7 @@ jobs:
           }
 
           dependencyResolutionManagement {
-              repositoriesMode.set(
-                  RepositoriesMode.FAIL_ON_PROJECT_REPOS
-              )
-
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories {
                   google()
                   mavenCentral()
@@ -118,88 +78,51 @@ jobs:
                   applicationId "com.invoicemaker.app"
                   minSdk 23
                   targetSdk 35
-                  versionCode 34
-                  versionName "3.2.2"
+                  versionCode 35
+                  versionName "3.3.0"
               }
           }
           EOF
 
           cat > app/src/main/res/values/styles.xml <<'EOF'
           <resources>
-
-              <style
-                  name="AppTheme"
-                  parent="android:style/Theme.Material.Light.NoActionBar">
-
-                  <item name="android:statusBarColor">
-                      #111827
-                  </item>
-
-                  <item name="android:navigationBarColor">
-                      #111827
-                  </item>
-
-                  <item name="android:windowLightStatusBar">
-                      false
-                  </item>
-
+              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:statusBarColor">#111827</item>
+                  <item name="android:navigationBarColor">#111827</item>
+                  <item name="android:windowLightStatusBar">false</item>
               </style>
-
           </resources>
           EOF
 
           cat > app/src/main/res/drawable/app_icon.xml <<'EOF'
-          <vector
-              xmlns:android="http://schemas.android.com/apk/res/android"
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="108dp"
               android:height="108dp"
               android:viewportWidth="108"
               android:viewportHeight="108">
-
-              <path
-                  android:fillColor="#111827"
-                  android:pathData="M0,0h108v108h-108z" />
-
-              <path
-                  android:fillColor="#FFFFFF"
-                  android:pathData="M27,24h54v60h-54z" />
-
-              <path
-                  android:fillColor="#111827"
-                  android:pathData="M35,35h38v6h-38zM35,48h38v6h-38zM35,61h25v6h-25z" />
-
+              <path android:fillColor="#111827" android:pathData="M0,0h108v108h-108z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M27,24h54v60h-54z"/>
+              <path android:fillColor="#111827" android:pathData="M35,35h38v6h-38zM35,48h38v6h-38zM35,61h25v6h-25z"/>
           </vector>
           EOF
 
           cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <manifest
-              xmlns:android="http://schemas.android.com/apk/res/android">
-
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
                   android:allowBackup="true"
                   android:label="Invoice Maker"
                   android:icon="@drawable/app_icon"
                   android:theme="@style/AppTheme">
-
                   <activity
                       android:name=".MainActivity"
                       android:screenOrientation="portrait"
                       android:exported="true">
-
                       <intent-filter>
-
-                          <action
-                              android:name="android.intent.action.MAIN" />
-
-                          <category
-                              android:name="android.intent.category.LAUNCHER" />
-
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
-
                   </activity>
-
               </application>
-
           </manifest>
           EOF
 
@@ -207,65 +130,73 @@ jobs:
           package com.invoicemaker.app;
 
           import android.app.Activity;
-          import android.print.PrintManager;
-          import android.content.Context;
           import android.content.Intent;
+          import android.graphics.Insets;
           import android.net.Uri;
+          import android.os.Build;
           import android.os.Bundle;
+          import android.os.CancellationSignal;
+          import android.os.ParcelFileDescriptor;
+          import android.print.PageRange;
+          import android.print.PrintAttributes;
+          import android.print.PrintDocumentAdapter;
+          import android.print.PrintDocumentInfo;
           import android.webkit.JavascriptInterface;
           import android.webkit.ValueCallback;
           import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
+          import android.view.WindowInsets;
           import android.widget.Toast;
+
+          import java.io.IOException;
 
           public class MainActivity extends Activity {
 
               private WebView webView;
+              private WebView pdfWebView;
+              private ValueCallback<Uri[]> fileCallback;
 
-              private ValueCallback<Uri[]>
-                  fileCallback;
+              private static final int FILE_REQUEST = 1001;
+              private static final int PDF_REQUEST = 1002;
 
-              private static final int
-                  FILE_REQUEST = 1001;
+              private String pendingPdfHtml;
+              private String pendingPdfName;
 
               @Override
-              protected void onCreate(
-                  Bundle savedInstanceState
-              ) {
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
 
-                  super.onCreate(
-                      savedInstanceState
-                  );
-
-                  webView =
-                      new WebView(this);
-
+                  webView = new WebView(this);
                   setContentView(webView);
+
+                  if (Build.VERSION.SDK_INT >= 30) {
+                      webView.setOnApplyWindowInsetsListener((v, insets) -> {
+                          Insets bars =
+                              insets.getInsets(
+                                  WindowInsets.Type.navigationBars()
+                              );
+
+                          v.setPadding(
+                              0,
+                              0,
+                              0,
+                              bars.bottom
+                          );
+
+                          return insets;
+                      });
+                  }
 
                   WebSettings settings =
                       webView.getSettings();
 
-                  settings.setJavaScriptEnabled(
-                      true
-                  );
-
-                  settings.setDomStorageEnabled(
-                      true
-                  );
-
-                  settings.setDatabaseEnabled(
-                      true
-                  );
-
-                  settings.setAllowFileAccess(
-                      true
-                  );
-
-                  settings.setAllowContentAccess(
-                      true
-                  );
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
+                  settings.setAllowFileAccess(true);
+                  settings.setAllowContentAccess(true);
 
                   webView.setWebViewClient(
                       new WebViewClient()
@@ -280,29 +211,17 @@ jobs:
                       new WebChromeClient() {
 
                           @Override
-                          public boolean
-                          onShowFileChooser(
-
+                          public boolean onShowFileChooser(
                               WebView webView,
-
-                              ValueCallback<Uri[]>
-                                  newCallback,
-
+                              ValueCallback<Uri[]> newCallback,
                               FileChooserParams params
                           ) {
 
-                              if (
-                                  fileCallback != null
-                              ) {
-
-                                  fileCallback
-                                      .onReceiveValue(
-                                          null
-                                      );
+                              if (fileCallback != null) {
+                                  fileCallback.onReceiveValue(null);
                               }
 
-                              fileCallback =
-                                  newCallback;
+                              fileCallback = newCallback;
 
                               try {
 
@@ -313,12 +232,9 @@ jobs:
 
                                   return true;
 
-                              } catch (
-                                  Exception e
-                              ) {
+                              } catch (Exception e) {
 
-                                  fileCallback =
-                                      null;
+                                  fileCallback = null;
 
                                   Toast.makeText(
                                       MainActivity.this,
@@ -340,79 +256,247 @@ jobs:
               public class AndroidBridge {
 
                   @JavascriptInterface
-                  public void printHtml(
-                      final String html
+                  public void savePdf(
+                      final String html,
+                      final String suggestedName
                   ) {
 
                       runOnUiThread(() -> {
 
-                          WebView printView =
-                              new WebView(
-                                  MainActivity.this
+                          pendingPdfHtml = html;
+
+                          pendingPdfName =
+                              suggestedName == null ||
+                              suggestedName.trim().isEmpty()
+                              ? "document.pdf"
+                              : suggestedName;
+
+                          if (
+                              !pendingPdfName
+                                  .toLowerCase()
+                                  .endsWith(".pdf")
+                          ) {
+                              pendingPdfName += ".pdf";
+                          }
+
+                          Intent intent =
+                              new Intent(
+                                  Intent.ACTION_CREATE_DOCUMENT
                               );
 
-                          printView
-                              .getSettings()
-                              .setJavaScriptEnabled(
-                                  true
-                              );
-
-                          printView.setWebViewClient(
-                              new WebViewClient() {
-
-                                  @Override
-                                  public void
-                                  onPageFinished(
-
-                                      WebView view,
-                                      String url
-                                  ) {
-
-                                      PrintManager manager =
-                                          (PrintManager)
-                                          getSystemService(
-                                              Context.PRINT_SERVICE
-                                          );
-
-                                      manager.print(
-                                          "Invoice Maker Document",
-
-                                          view
-                                              .createPrintDocumentAdapter(
-                                                  "Invoice Maker Document"
-                                              ),
-
-                                          null
-                                      );
-                                  }
-                              }
+                          intent.addCategory(
+                              Intent.CATEGORY_OPENABLE
                           );
 
-                          printView
-                              .loadDataWithBaseURL(
+                          intent.setType(
+                              "application/pdf"
+                          );
 
-                                  null,
-                                  html,
-                                  "text/html",
-                                  "UTF-8",
-                                  null
-                              );
+                          intent.putExtra(
+                              Intent.EXTRA_TITLE,
+                              pendingPdfName
+                          );
+
+                          startActivityForResult(
+                              intent,
+                              PDF_REQUEST
+                          );
                       });
                   }
               }
 
+              private void writePdfToUri(Uri uri) {
+
+                  if (pendingPdfHtml == null) {
+                      return;
+                  }
+
+                  pdfWebView =
+                      new WebView(this);
+
+                  pdfWebView
+                      .getSettings()
+                      .setJavaScriptEnabled(true);
+
+                  pdfWebView
+                      .getSettings()
+                      .setDomStorageEnabled(true);
+
+                  pdfWebView.setWebViewClient(
+                      new WebViewClient() {
+
+                          @Override
+                          public void onPageFinished(
+                              WebView view,
+                              String url
+                          ) {
+
+                              PrintAttributes attributes =
+                                  new PrintAttributes.Builder()
+                                      .setMediaSize(
+                                          PrintAttributes
+                                              .MediaSize
+                                              .NA_LETTER
+                                      )
+                                      .setResolution(
+                                          new PrintAttributes.Resolution(
+                                              "pdf",
+                                              "pdf",
+                                              600,
+                                              600
+                                          )
+                                      )
+                                      .setMinMargins(
+                                          PrintAttributes
+                                              .Margins
+                                              .NO_MARGINS
+                                      )
+                                      .build();
+
+                              PrintDocumentAdapter adapter =
+                                  view.createPrintDocumentAdapter(
+                                      "Invoice Maker PDF"
+                                  );
+
+                              adapter.onStart();
+
+                              adapter.onLayout(
+                                  null,
+                                  attributes,
+                                  new CancellationSignal(),
+                                  new PrintDocumentAdapter
+                                      .LayoutResultCallback() {
+
+                                      @Override
+                                      public void onLayoutFinished(
+                                          PrintDocumentInfo info,
+                                          boolean changed
+                                      ) {
+
+                                          try {
+
+                                              final ParcelFileDescriptor pfd =
+                                                  getContentResolver()
+                                                      .openFileDescriptor(
+                                                          uri,
+                                                          "w"
+                                                      );
+
+                                              if (pfd == null) {
+                                                  throw new IOException(
+                                                      "Unable to open destination"
+                                                  );
+                                              }
+
+                                              adapter.onWrite(
+                                                  new PageRange[]{
+                                                      PageRange.ALL_PAGES
+                                                  },
+                                                  pfd,
+                                                  new CancellationSignal(),
+                                                  new PrintDocumentAdapter
+                                                      .WriteResultCallback() {
+
+                                                      @Override
+                                                      public void onWriteFinished(
+                                                          PageRange[] pages
+                                                      ) {
+
+                                                          try {
+                                                              pfd.close();
+                                                          } catch (
+                                                              IOException ignored
+                                                          ) {}
+
+                                                          adapter.onFinish();
+
+                                                          Toast.makeText(
+                                                              MainActivity.this,
+                                                              "PDF saved",
+                                                              Toast.LENGTH_LONG
+                                                          ).show();
+
+                                                          pdfWebView = null;
+                                                          pendingPdfHtml = null;
+                                                      }
+
+                                                      @Override
+                                                      public void onWriteFailed(
+                                                          CharSequence error
+                                                      ) {
+
+                                                          try {
+                                                              pfd.close();
+                                                          } catch (
+                                                              IOException ignored
+                                                          ) {}
+
+                                                          adapter.onFinish();
+
+                                                          Toast.makeText(
+                                                              MainActivity.this,
+                                                              "Could not save PDF",
+                                                              Toast.LENGTH_LONG
+                                                          ).show();
+
+                                                          pdfWebView = null;
+                                                      }
+                                                  }
+                                              );
+
+                                          } catch (Exception e) {
+
+                                              adapter.onFinish();
+
+                                              Toast.makeText(
+                                                  MainActivity.this,
+                                                  "Could not create PDF",
+                                                  Toast.LENGTH_LONG
+                                              ).show();
+
+                                              pdfWebView = null;
+                                          }
+                                      }
+
+                                      @Override
+                                      public void onLayoutFailed(
+                                          CharSequence error
+                                      ) {
+
+                                          adapter.onFinish();
+
+                                          Toast.makeText(
+                                              MainActivity.this,
+                                              "Could not prepare PDF",
+                                              Toast.LENGTH_LONG
+                                          ).show();
+
+                                          pdfWebView = null;
+                                      }
+                                  },
+                                  null
+                              );
+                          }
+                      }
+                  );
+
+                  pdfWebView.loadDataWithBaseURL(
+                      null,
+                      pendingPdfHtml,
+                      "text/html",
+                      "UTF-8",
+                      null
+                  );
+              }
+
               @Override
               protected void onActivityResult(
-
                   int requestCode,
                   int resultCode,
                   Intent data
               ) {
 
-                  if (
-                      requestCode ==
-                      FILE_REQUEST
-                  ) {
+                  if (requestCode == FILE_REQUEST) {
 
                       Uri[] result = null;
 
@@ -428,17 +512,33 @@ jobs:
                               };
                       }
 
-                      if (
-                          fileCallback != null
-                      ) {
+                      if (fileCallback != null) {
 
                           fileCallback
-                              .onReceiveValue(
-                                  result
-                              );
+                              .onReceiveValue(result);
 
-                          fileCallback =
-                              null;
+                          fileCallback = null;
+                      }
+
+                      return;
+                  }
+
+                  if (requestCode == PDF_REQUEST) {
+
+                      if (
+                          resultCode == RESULT_OK &&
+                          data != null &&
+                          data.getData() != null
+                      ) {
+
+                          writePdfToUri(
+                              data.getData()
+                          );
+
+                      } else {
+
+                          pendingPdfHtml = null;
+                          pendingPdfName = null;
                       }
 
                       return;
@@ -454,16 +554,25 @@ jobs:
               @Override
               public void onBackPressed() {
 
-                  if (
-                      webView.canGoBack()
-                  ) {
+                  webView.evaluateJavascript(
+                      "window.handleAndroidBack ? window.handleAndroidBack() : false",
 
-                      webView.goBack();
+                      value -> {
 
-                  } else {
+                          if (!"true".equals(value)) {
 
-                      super.onBackPressed();
-                  }
+                              if (webView.canGoBack()) {
+
+                                  webView.goBack();
+
+                              } else {
+
+                                  MainActivity.super
+                                      .onBackPressed();
+                              }
+                          }
+                      }
+                  );
               }
           }
           EOF
