@@ -1,4 +1,4 @@
-name: Build Never Forget APK
+name: Build Invoice Maker APK
 
 on:
   workflow_dispatch:
@@ -28,12 +28,32 @@ jobs:
       - name: Create Android project
         shell: bash
         run: |
-          mkdir -p app/src/main/java/com/neverforget/invoice
+          set -e
+
+          mkdir -p app/src/main/java/com/invoicemaker/app
           mkdir -p app/src/main/assets
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/drawable
 
           cp index.html app/src/main/assets/index.html
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/assets/index.html")
+          s = p.read_text(encoding="utf-8")
+          s = s.replace("Never Forget", "Invoice Maker")
+          s = s.replace('const APP_VERSION="3.0.0";', 'const APP_VERSION="3.2.1 APK";')
+          s = s.replace('const APP_VERSION="3.1.0 APK";', 'const APP_VERSION="3.2.1 APK";')
+          s = s.replace('const APP_VERSION="3.2.0";', 'const APP_VERSION="3.2.1 APK";')
+          old = ''' const w=window.open("","_blank");if(!w){alert("Allow pop-ups for this site and try again.");return}w.document.open();w.document.write(out);w.document.close();w.focus();setTimeout(()=>{try{w.print()}catch(e){}},500)
+          }'''
+          new = ''' if(window.Android && typeof Android.printHtml==="function"){Android.printHtml(out);return}
+           const w=window.open("","_blank");if(!w){alert("Allow pop-ups for this site and try again.");return}w.document.open();w.document.write(out);w.document.close();w.focus();setTimeout(()=>{try{w.print()}catch(e){}},500)
+          }'''
+          if old in s:
+              s = s.replace(old, new)
+          p.write_text(s, encoding="utf-8")
+          PY
 
           cat > settings.gradle <<'EOF'
           pluginManagement {
@@ -52,7 +72,7 @@ jobs:
               }
           }
 
-          rootProject.name = "NeverForget"
+          rootProject.name = "InvoiceMaker"
           include(":app")
           EOF
 
@@ -68,15 +88,15 @@ jobs:
           }
 
           android {
-              namespace 'com.neverforget.invoice'
+              namespace 'com.invoicemaker.app'
               compileSdk 35
 
               defaultConfig {
-                  applicationId "com.neverforget.invoice"
+                  applicationId "com.invoicemaker.app"
                   minSdk 23
                   targetSdk 35
-                  versionCode 32
-                  versionName "3.2.0"
+                  versionCode 33
+                  versionName "3.2.1"
               }
           }
           EOF
@@ -104,7 +124,11 @@ jobs:
 
               <path
                   android:fillColor="#FFFFFF"
-                  android:pathData="M28,28h8v52h-8zM36,28l24,52h-9l-23,-52zM52,28h8v52h-8zM67,28h8v52h-8zM75,28h20v8h-20zM75,49h16v8h-16z" />
+                  android:pathData="M27,24h54v60h-54z" />
+
+              <path
+                  android:fillColor="#111827"
+                  android:pathData="M35,35h38v6h-38zM35,48h38v6h-38zM35,61h25v6h-25z" />
           </vector>
           EOF
 
@@ -113,7 +137,7 @@ jobs:
 
               <application
                   android:allowBackup="true"
-                  android:label="Never Forget"
+                  android:label="Invoice Maker"
                   android:icon="@drawable/app_icon"
                   android:theme="@style/AppTheme">
 
@@ -134,8 +158,8 @@ jobs:
           </manifest>
           EOF
 
-          cat > app/src/main/java/com/neverforget/invoice/MainActivity.java <<'EOF'
-          package com.neverforget.invoice;
+          cat > app/src/main/java/com/invoicemaker/app/MainActivity.java <<'EOF'
+          package com.invoicemaker.app;
 
           import android.app.Activity;
           import android.app.PrintManager;
@@ -179,7 +203,6 @@ jobs:
                   );
 
                   webView.setWebChromeClient(new WebChromeClient() {
-
                       @Override
                       public boolean onShowFileChooser(
                               WebView webView,
@@ -200,25 +223,20 @@ jobs:
                               return true;
                           } catch (Exception e) {
                               fileCallback = null;
-
                               Toast.makeText(
                                   MainActivity.this,
                                   "Unable to open file picker",
                                   Toast.LENGTH_SHORT
                               ).show();
-
                               return false;
                           }
                       }
                   });
 
-                  webView.loadUrl(
-                      "file:///android_asset/index.html"
-                  );
+                  webView.loadUrl("file:///android_asset/index.html");
               }
 
               public class AndroidBridge {
-
                   @JavascriptInterface
                   public void printHtml(final String html) {
 
@@ -232,7 +250,6 @@ jobs:
 
                           printView.setWebViewClient(
                               new WebViewClient() {
-
                                   @Override
                                   public void onPageFinished(
                                           WebView view,
@@ -245,9 +262,9 @@ jobs:
                                           );
 
                                       manager.print(
-                                          "Never Forget Document",
+                                          "Invoice Maker Document",
                                           view.createPrintDocumentAdapter(
-                                              "Never Forget Document"
+                                              "Invoice Maker Document"
                                           ),
                                           null
                                       );
@@ -281,14 +298,11 @@ jobs:
                           data != null &&
                           data.getData() != null
                       ) {
-                          result =
-                              new Uri[]{data.getData()};
+                          result = new Uri[]{data.getData()};
                       }
 
                       if (fileCallback != null) {
-                          fileCallback
-                              .onReceiveValue(result);
-
+                          fileCallback.onReceiveValue(result);
                           fileCallback = null;
                       }
 
@@ -304,7 +318,6 @@ jobs:
 
               @Override
               public void onBackPressed() {
-
                   if (webView.canGoBack()) {
                       webView.goBack();
                   } else {
@@ -320,5 +333,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Never-Forget-APK
+          name: Invoice-Maker-APK
           path: app/build/outputs/apk/debug/app-debug.apk
