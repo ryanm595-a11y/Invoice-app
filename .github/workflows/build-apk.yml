@@ -1,1 +1,248 @@
+name: Build Never Forget APK
 
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Create Android project
+        shell: bash
+        run: |
+          mkdir -p app/src/main/java/com/neverforget/invoice
+          mkdir -p app/src/main/assets
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/drawable
+
+          cp index.html app/src/main/assets/index.html
+
+          if [ -f icon-512.png ]; then
+            cp icon-512.png app/src/main/res/drawable/app_icon.png
+          fi
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "NeverForget"
+          include(":app")
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.neverforget.invoice'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId "com.neverforget.invoice"
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 31
+                  versionName "3.1.0"
+              }
+          }
+          EOF
+
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:statusBarColor">#111827</item>
+                  <item name="android:navigationBarColor">#111827</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <application
+                  android:allowBackup="true"
+                  android:label="Never Forget"
+                  android:icon="@drawable/app_icon"
+                  android:theme="@style/AppTheme">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:screenOrientation="portrait"
+                      android:exported="true">
+
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+
+                  </activity>
+
+              </application>
+
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/neverforget/invoice/MainActivity.java <<'EOF'
+          package com.neverforget.invoice;
+
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.Toast;
+
+          public class MainActivity extends Activity {
+
+              private WebView webView;
+              private ValueCallback<Uri[]> fileCallback;
+
+              private static final int FILE_REQUEST = 1001;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  webView = new WebView(this);
+                  setContentView(webView);
+
+                  WebSettings settings = webView.getSettings();
+
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
+                  settings.setAllowFileAccess(true);
+                  settings.setAllowContentAccess(true);
+
+                  webView.setWebViewClient(new WebViewClient());
+
+                  webView.setWebChromeClient(new WebChromeClient() {
+
+                      @Override
+                      public boolean onShowFileChooser(
+                              WebView webView,
+                              ValueCallback<Uri[]> newCallback,
+                              FileChooserParams fileChooserParams) {
+
+                          if (fileCallback != null) {
+                              fileCallback.onReceiveValue(null);
+                          }
+
+                          fileCallback = newCallback;
+
+                          try {
+                              Intent intent = fileChooserParams.createIntent();
+                              startActivityForResult(intent, FILE_REQUEST);
+                              return true;
+                          } catch (Exception e) {
+
+                              fileCallback = null;
+
+                              Toast.makeText(
+                                      MainActivity.this,
+                                      "Unable to open file picker",
+                                      Toast.LENGTH_SHORT
+                              ).show();
+
+                              return false;
+                          }
+                      }
+                  });
+
+                  webView.loadUrl("file:///android_asset/index.html");
+              }
+
+              @Override
+              protected void onActivityResult(
+                      int requestCode,
+                      int resultCode,
+                      Intent data) {
+
+                  if (requestCode == FILE_REQUEST) {
+
+                      Uri[] result = null;
+
+                      if (resultCode == RESULT_OK && data != null) {
+
+                          if (data.getData() != null) {
+                              result = new Uri[]{data.getData()};
+                          }
+                      }
+
+                      if (fileCallback != null) {
+                          fileCallback.onReceiveValue(result);
+                          fileCallback = null;
+                      }
+
+                      return;
+                  }
+
+                  super.onActivityResult(
+                          requestCode,
+                          resultCode,
+                          data
+                  );
+              }
+
+              @Override
+              public void onBackPressed() {
+
+                  if (webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      super.onBackPressed();
+                  }
+              }
+          }
+          EOF
+
+      - name: Build APK
+        run: gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Never-Forget-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
