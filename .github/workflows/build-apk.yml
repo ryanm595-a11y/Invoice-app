@@ -30,6 +30,10 @@ jobs:
         run: |
           set -e
 
+          rm -rf app
+          rm -f build.gradle
+          rm -f settings.gradle
+
           mkdir -p app/src/main/java/com/invoicemaker/app
           mkdir -p app/src/main/assets
           mkdir -p app/src/main/res/values
@@ -39,19 +43,35 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+
           p = Path("app/src/main/assets/index.html")
           s = p.read_text(encoding="utf-8")
+
           s = s.replace("Never Forget", "Invoice Maker")
-          s = s.replace('const APP_VERSION="3.0.0";', 'const APP_VERSION="3.2.1 APK";')
-          s = s.replace('const APP_VERSION="3.1.0 APK";', 'const APP_VERSION="3.2.1 APK";')
-          s = s.replace('const APP_VERSION="3.2.0";', 'const APP_VERSION="3.2.1 APK";')
+
+          versions = [
+              'const APP_VERSION="3.0.0";',
+              'const APP_VERSION="3.1.0 APK";',
+              'const APP_VERSION="3.2.0";',
+              'const APP_VERSION="3.2.1 APK";'
+          ]
+
+          for old in versions:
+              s = s.replace(
+                  old,
+                  'const APP_VERSION="3.2.2 APK";'
+              )
+
           old = ''' const w=window.open("","_blank");if(!w){alert("Allow pop-ups for this site and try again.");return}w.document.open();w.document.write(out);w.document.close();w.focus();setTimeout(()=>{try{w.print()}catch(e){}},500)
           }'''
+
           new = ''' if(window.Android && typeof Android.printHtml==="function"){Android.printHtml(out);return}
            const w=window.open("","_blank");if(!w){alert("Allow pop-ups for this site and try again.");return}w.document.open();w.document.write(out);w.document.close();w.focus();setTimeout(()=>{try{w.print()}catch(e){}},500)
           }'''
+
           if old in s:
               s = s.replace(old, new)
+
           p.write_text(s, encoding="utf-8")
           PY
 
@@ -65,7 +85,10 @@ jobs:
           }
 
           dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositoriesMode.set(
+                  RepositoriesMode.FAIL_ON_PROJECT_REPOS
+              )
+
               repositories {
                   google()
                   mavenCentral()
@@ -95,24 +118,39 @@ jobs:
                   applicationId "com.invoicemaker.app"
                   minSdk 23
                   targetSdk 35
-                  versionCode 33
-                  versionName "3.2.1"
+                  versionCode 34
+                  versionName "3.2.2"
               }
           }
           EOF
 
           cat > app/src/main/res/values/styles.xml <<'EOF'
           <resources>
-              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
-                  <item name="android:statusBarColor">#111827</item>
-                  <item name="android:navigationBarColor">#111827</item>
-                  <item name="android:windowLightStatusBar">false</item>
+
+              <style
+                  name="AppTheme"
+                  parent="android:style/Theme.Material.Light.NoActionBar">
+
+                  <item name="android:statusBarColor">
+                      #111827
+                  </item>
+
+                  <item name="android:navigationBarColor">
+                      #111827
+                  </item>
+
+                  <item name="android:windowLightStatusBar">
+                      false
+                  </item>
+
               </style>
+
           </resources>
           EOF
 
           cat > app/src/main/res/drawable/app_icon.xml <<'EOF'
-          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+          <vector
+              xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="108dp"
               android:height="108dp"
               android:viewportWidth="108"
@@ -129,11 +167,13 @@ jobs:
               <path
                   android:fillColor="#111827"
                   android:pathData="M35,35h38v6h-38zM35,48h38v6h-38zM35,61h25v6h-25z" />
+
           </vector>
           EOF
 
           cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <manifest
+              xmlns:android="http://schemas.android.com/apk/res/android">
 
               <application
                   android:allowBackup="true"
@@ -147,8 +187,13 @@ jobs:
                       android:exported="true">
 
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
+
+                          <action
+                              android:name="android.intent.action.MAIN" />
+
+                          <category
+                              android:name="android.intent.category.LAUNCHER" />
+
                       </intent-filter>
 
                   </activity>
@@ -162,7 +207,7 @@ jobs:
           package com.invoicemaker.app;
 
           import android.app.Activity;
-          import android.app.PrintManager;
+          import android.print.PrintManager;
           import android.content.Context;
           import android.content.Intent;
           import android.net.Uri;
@@ -178,82 +223,150 @@ jobs:
           public class MainActivity extends Activity {
 
               private WebView webView;
-              private ValueCallback<Uri[]> fileCallback;
-              private static final int FILE_REQUEST = 1001;
+
+              private ValueCallback<Uri[]>
+                  fileCallback;
+
+              private static final int
+                  FILE_REQUEST = 1001;
 
               @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
+              protected void onCreate(
+                  Bundle savedInstanceState
+              ) {
 
-                  webView = new WebView(this);
+                  super.onCreate(
+                      savedInstanceState
+                  );
+
+                  webView =
+                      new WebView(this);
+
                   setContentView(webView);
 
-                  WebSettings settings = webView.getSettings();
-                  settings.setJavaScriptEnabled(true);
-                  settings.setDomStorageEnabled(true);
-                  settings.setDatabaseEnabled(true);
-                  settings.setAllowFileAccess(true);
-                  settings.setAllowContentAccess(true);
+                  WebSettings settings =
+                      webView.getSettings();
 
-                  webView.setWebViewClient(new WebViewClient());
+                  settings.setJavaScriptEnabled(
+                      true
+                  );
+
+                  settings.setDomStorageEnabled(
+                      true
+                  );
+
+                  settings.setDatabaseEnabled(
+                      true
+                  );
+
+                  settings.setAllowFileAccess(
+                      true
+                  );
+
+                  settings.setAllowContentAccess(
+                      true
+                  );
+
+                  webView.setWebViewClient(
+                      new WebViewClient()
+                  );
 
                   webView.addJavascriptInterface(
                       new AndroidBridge(),
                       "Android"
                   );
 
-                  webView.setWebChromeClient(new WebChromeClient() {
-                      @Override
-                      public boolean onShowFileChooser(
+                  webView.setWebChromeClient(
+                      new WebChromeClient() {
+
+                          @Override
+                          public boolean
+                          onShowFileChooser(
+
                               WebView webView,
-                              ValueCallback<Uri[]> newCallback,
-                              FileChooserParams params) {
 
-                          if (fileCallback != null) {
-                              fileCallback.onReceiveValue(null);
-                          }
+                              ValueCallback<Uri[]>
+                                  newCallback,
 
-                          fileCallback = newCallback;
+                              FileChooserParams params
+                          ) {
 
-                          try {
-                              startActivityForResult(
-                                  params.createIntent(),
-                                  FILE_REQUEST
-                              );
-                              return true;
-                          } catch (Exception e) {
-                              fileCallback = null;
-                              Toast.makeText(
-                                  MainActivity.this,
-                                  "Unable to open file picker",
-                                  Toast.LENGTH_SHORT
-                              ).show();
-                              return false;
+                              if (
+                                  fileCallback != null
+                              ) {
+
+                                  fileCallback
+                                      .onReceiveValue(
+                                          null
+                                      );
+                              }
+
+                              fileCallback =
+                                  newCallback;
+
+                              try {
+
+                                  startActivityForResult(
+                                      params.createIntent(),
+                                      FILE_REQUEST
+                                  );
+
+                                  return true;
+
+                              } catch (
+                                  Exception e
+                              ) {
+
+                                  fileCallback =
+                                      null;
+
+                                  Toast.makeText(
+                                      MainActivity.this,
+                                      "Unable to open file picker",
+                                      Toast.LENGTH_SHORT
+                                  ).show();
+
+                                  return false;
+                              }
                           }
                       }
-                  });
+                  );
 
-                  webView.loadUrl("file:///android_asset/index.html");
+                  webView.loadUrl(
+                      "file:///android_asset/index.html"
+                  );
               }
 
               public class AndroidBridge {
+
                   @JavascriptInterface
-                  public void printHtml(final String html) {
+                  public void printHtml(
+                      final String html
+                  ) {
 
                       runOnUiThread(() -> {
 
                           WebView printView =
-                              new WebView(MainActivity.this);
+                              new WebView(
+                                  MainActivity.this
+                              );
 
-                          printView.getSettings()
-                              .setJavaScriptEnabled(true);
+                          printView
+                              .getSettings()
+                              .setJavaScriptEnabled(
+                                  true
+                              );
 
                           printView.setWebViewClient(
                               new WebViewClient() {
+
                                   @Override
-                                  public void onPageFinished(
-                                          WebView view,
-                                          String url) {
+                                  public void
+                                  onPageFinished(
+
+                                      WebView view,
+                                      String url
+                                  ) {
 
                                       PrintManager manager =
                                           (PrintManager)
@@ -263,33 +376,43 @@ jobs:
 
                                       manager.print(
                                           "Invoice Maker Document",
-                                          view.createPrintDocumentAdapter(
-                                              "Invoice Maker Document"
-                                          ),
+
+                                          view
+                                              .createPrintDocumentAdapter(
+                                                  "Invoice Maker Document"
+                                              ),
+
                                           null
                                       );
                                   }
                               }
                           );
 
-                          printView.loadDataWithBaseURL(
-                              null,
-                              html,
-                              "text/html",
-                              "UTF-8",
-                              null
-                          );
+                          printView
+                              .loadDataWithBaseURL(
+
+                                  null,
+                                  html,
+                                  "text/html",
+                                  "UTF-8",
+                                  null
+                              );
                       });
                   }
               }
 
               @Override
               protected void onActivityResult(
-                      int requestCode,
-                      int resultCode,
-                      Intent data) {
 
-                  if (requestCode == FILE_REQUEST) {
+                  int requestCode,
+                  int resultCode,
+                  Intent data
+              ) {
+
+                  if (
+                      requestCode ==
+                      FILE_REQUEST
+                  ) {
 
                       Uri[] result = null;
 
@@ -298,12 +421,24 @@ jobs:
                           data != null &&
                           data.getData() != null
                       ) {
-                          result = new Uri[]{data.getData()};
+
+                          result =
+                              new Uri[]{
+                                  data.getData()
+                              };
                       }
 
-                      if (fileCallback != null) {
-                          fileCallback.onReceiveValue(result);
-                          fileCallback = null;
+                      if (
+                          fileCallback != null
+                      ) {
+
+                          fileCallback
+                              .onReceiveValue(
+                                  result
+                              );
+
+                          fileCallback =
+                              null;
                       }
 
                       return;
@@ -318,9 +453,15 @@ jobs:
 
               @Override
               public void onBackPressed() {
-                  if (webView.canGoBack()) {
+
+                  if (
+                      webView.canGoBack()
+                  ) {
+
                       webView.goBack();
+
                   } else {
+
                       super.onBackPressed();
                   }
               }
