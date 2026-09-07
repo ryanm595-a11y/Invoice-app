@@ -52,7 +52,6 @@ jobs:
 
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-
               repositories {
                   google()
                   mavenCentral()
@@ -82,62 +81,43 @@ jobs:
                   applicationId "com.invoicemaker.app"
                   minSdk 23
                   targetSdk 35
-                  versionCode 36
-                  versionName "3.3.1"
+                  versionCode 40
+                  versionName "3.4.0"
               }
           }
           EOF
 
           cat > app/src/main/res/values/styles.xml <<'EOF'
           <resources>
-
-              <style
-                  name="AppTheme"
-                  parent="android:style/Theme.Material.Light.NoActionBar">
-
-                  <item name="android:statusBarColor">
-                      #111827
-                  </item>
-
-                  <item name="android:navigationBarColor">
-                      #111827
-                  </item>
-
-                  <item name="android:windowLightStatusBar">
-                      false
-                  </item>
-
+              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:statusBarColor">#111827</item>
+                  <item name="android:navigationBarColor">#111827</item>
+                  <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:windowActionModeOverlay">true</item>
               </style>
-
           </resources>
           EOF
 
           cat > app/src/main/res/drawable/app_icon.xml <<'EOF'
-          <vector
-              xmlns:android="http://schemas.android.com/apk/res/android"
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="108dp"
               android:height="108dp"
               android:viewportWidth="108"
               android:viewportHeight="108">
-
               <path
                   android:fillColor="#111827"
-                  android:pathData="M0,0h108v108h-108z" />
-
+                  android:pathData="M0,0h108v108h-108z"/>
               <path
                   android:fillColor="#FFFFFF"
-                  android:pathData="M27,24h54v60h-54z" />
-
+                  android:pathData="M27,24h54v60h-54z"/>
               <path
                   android:fillColor="#111827"
-                  android:pathData="M35,35h38v6h-38zM35,48h38v6h-38zM35,61h25v6h-25z" />
-
+                  android:pathData="M35,35h38v6h-38zM35,48h38v6h-38zM35,61h25v6h-25z"/>
           </vector>
           EOF
 
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
               <application
                   android:allowBackup="true"
                   android:label="Invoice Maker"
@@ -150,19 +130,12 @@ jobs:
                       android:exported="true">
 
                       <intent-filter>
-
-                          <action
-                              android:name="android.intent.action.MAIN" />
-
-                          <category
-                              android:name="android.intent.category.LAUNCHER" />
-
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
 
                   </activity>
-
               </application>
-
           </manifest>
           EOF
 
@@ -170,15 +143,26 @@ jobs:
           package com.invoicemaker.app;
 
           import android.app.Activity;
+          import android.app.Dialog;
           import android.content.Intent;
+          import android.graphics.Bitmap;
+          import android.graphics.BitmapFactory;
           import android.graphics.Canvas;
           import android.graphics.Color;
           import android.graphics.Insets;
+          import android.graphics.Paint;
+          import android.graphics.Rect;
+          import android.graphics.Typeface;
           import android.graphics.pdf.PdfDocument;
+          import android.graphics.pdf.PdfRenderer;
           import android.net.Uri;
           import android.os.Build;
           import android.os.Bundle;
+          import android.os.ParcelFileDescriptor;
+          import android.util.Base64;
+          import android.view.Gravity;
           import android.view.View;
+          import android.view.Window;
           import android.view.WindowInsets;
           import android.webkit.JavascriptInterface;
           import android.webkit.ValueCallback;
@@ -186,407 +170,1306 @@ jobs:
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
+          import android.widget.Button;
+          import android.widget.FrameLayout;
+          import android.widget.ImageView;
+          import android.widget.LinearLayout;
+          import android.widget.ScrollView;
+          import android.widget.TextView;
           import android.widget.Toast;
 
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+
+          import java.io.File;
+          import java.io.FileInputStream;
           import java.io.FileOutputStream;
-          import java.io.IOException;
+          import java.io.OutputStream;
+          import java.text.NumberFormat;
+          import java.util.Locale;
 
           public class MainActivity extends Activity {
 
               private WebView webView;
-              private WebView pdfWebView;
-
               private ValueCallback<Uri[]> fileCallback;
 
               private static final int FILE_REQUEST = 1001;
-              private static final int PDF_REQUEST = 1002;
+              private static final int SAVE_PDF_REQUEST = 1002;
 
-              private String pendingPdfHtml;
-              private String pendingPdfName;
+              private File currentPdfFile;
+              private String currentPdfName = "document.pdf";
+              private Dialog previewDialog;
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
-
                   super.onCreate(savedInstanceState);
 
                   webView = new WebView(this);
-
                   setContentView(webView);
 
-                  webView.setBackgroundColor(Color.WHITE);
-
                   if (Build.VERSION.SDK_INT >= 30) {
-
-                      webView.setOnApplyWindowInsetsListener(
-                          (v, insets) -> {
-
-                              Insets bars =
-                                  insets.getInsets(
-                                      WindowInsets.Type.navigationBars()
-                                  );
-
-                              v.setPadding(
-                                  0,
-                                  0,
-                                  0,
-                                  bars.bottom
-                              );
-
-                              return insets;
-                          }
-                      );
+                      webView.setOnApplyWindowInsetsListener((v, insets) -> {
+                          Insets bars = insets.getInsets(
+                              WindowInsets.Type.navigationBars()
+                          );
+                          v.setPadding(0, 0, 0, bars.bottom);
+                          return insets;
+                      });
                   }
 
-                  WebSettings settings =
-                      webView.getSettings();
-
+                  WebSettings settings = webView.getSettings();
                   settings.setJavaScriptEnabled(true);
-
                   settings.setDomStorageEnabled(true);
-
                   settings.setDatabaseEnabled(true);
-
                   settings.setAllowFileAccess(true);
-
                   settings.setAllowContentAccess(true);
 
-                  webView.setWebViewClient(
-                      new WebViewClient()
-                  );
+                  webView.setWebViewClient(new WebViewClient());
 
                   webView.addJavascriptInterface(
                       new AndroidBridge(),
                       "Android"
                   );
 
-                  webView.setWebChromeClient(
-                      new WebChromeClient() {
+                  webView.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public boolean onShowFileChooser(
+                          WebView webView,
+                          ValueCallback<Uri[]> newCallback,
+                          FileChooserParams params
+                      ) {
+                          if (fileCallback != null) {
+                              fileCallback.onReceiveValue(null);
+                          }
 
-                          @Override
-                          public boolean onShowFileChooser(
+                          fileCallback = newCallback;
 
-                              WebView webView,
+                          try {
+                              startActivityForResult(
+                                  params.createIntent(),
+                                  FILE_REQUEST
+                              );
+                              return true;
+                          } catch (Exception e) {
+                              fileCallback = null;
 
-                              ValueCallback<Uri[]>
-                                  newCallback,
+                              Toast.makeText(
+                                  MainActivity.this,
+                                  "Unable to open file picker",
+                                  Toast.LENGTH_SHORT
+                              ).show();
 
-                              FileChooserParams params
-                          ) {
-
-                              if (fileCallback != null) {
-
-                                  fileCallback
-                                      .onReceiveValue(null);
-                              }
-
-                              fileCallback =
-                                  newCallback;
-
-                              try {
-
-                                  startActivityForResult(
-                                      params.createIntent(),
-                                      FILE_REQUEST
-                                  );
-
-                                  return true;
-
-                              } catch (Exception e) {
-
-                                  fileCallback = null;
-
-                                  Toast.makeText(
-                                      MainActivity.this,
-                                      "Unable to open file picker",
-                                      Toast.LENGTH_SHORT
-                                  ).show();
-
-                                  return false;
-                              }
+                              return false;
                           }
                       }
-                  );
+                  });
 
-                  webView.loadUrl(
-                      "file:///android_asset/index.html"
-                  );
+                  webView.loadUrl("file:///android_asset/index.html");
               }
 
               public class AndroidBridge {
 
                   @JavascriptInterface
-                  public void savePdf(
-
-                      final String html,
-                      final String suggestedName
-                  ) {
-
+                  public void previewDocument(final String json) {
                       runOnUiThread(() -> {
+                          try {
+                              JSONObject data = new JSONObject(json);
 
-                          pendingPdfHtml = html;
+                              currentPdfName =
+                                  safeFileName(
+                                      data.optString("number", "document")
+                                  ) + ".pdf";
 
-                          pendingPdfName =
-                              suggestedName;
-
-                          if (
-                              pendingPdfName == null ||
-                              pendingPdfName.trim().isEmpty()
-                          ) {
-
-                              pendingPdfName =
-                                  "document.pdf";
-                          }
-
-                          if (
-                              !pendingPdfName
-                                  .toLowerCase()
-                                  .endsWith(".pdf")
-                          ) {
-
-                              pendingPdfName += ".pdf";
-                          }
-
-                          Intent intent =
-                              new Intent(
-                                  Intent.ACTION_CREATE_DOCUMENT
+                              currentPdfFile = new File(
+                                  getCacheDir(),
+                                  "preview-" +
+                                      System.currentTimeMillis() +
+                                      ".pdf"
                               );
 
-                          intent.addCategory(
-                              Intent.CATEGORY_OPENABLE
-                          );
+                              generateNativePdf(
+                                  data,
+                                  currentPdfFile
+                              );
 
-                          intent.setType(
-                              "application/pdf"
-                          );
+                              if (
+                                  currentPdfFile.exists() &&
+                                  currentPdfFile.length() > 100
+                              ) {
+                                  showPdfPreview(
+                                      currentPdfFile,
+                                      currentPdfName
+                                  );
+                              } else {
+                                  Toast.makeText(
+                                      MainActivity.this,
+                                      "PDF generation failed",
+                                      Toast.LENGTH_LONG
+                                  ).show();
+                              }
 
-                          intent.putExtra(
-                              Intent.EXTRA_TITLE,
-                              pendingPdfName
-                          );
-
-                          startActivityForResult(
-                              intent,
-                              PDF_REQUEST
-                          );
+                          } catch (Exception e) {
+                              Toast.makeText(
+                                  MainActivity.this,
+                                  "Could not create PDF: " +
+                                      e.getMessage(),
+                                  Toast.LENGTH_LONG
+                              ).show();
+                          }
                       });
                   }
               }
 
-              private void createPdf(Uri destination) {
+              private String safeFileName(String value) {
+                  String out =
+                      value == null
+                          ? "document"
+                          : value.replaceAll(
+                              "[^A-Za-z0-9._-]",
+                              "_"
+                          );
 
-                  if (pendingPdfHtml == null) {
-                      return;
+                  if (out.trim().isEmpty()) {
+                      out = "document";
                   }
 
-                  pdfWebView =
-                      new WebView(this);
+                  return out;
+              }
 
-                  pdfWebView.setBackgroundColor(
-                      Color.WHITE
-                  );
-
-                  WebSettings settings =
-                      pdfWebView.getSettings();
-
-                  settings.setJavaScriptEnabled(true);
-
-                  settings.setDomStorageEnabled(true);
-
-                  pdfWebView.setWebViewClient(
-                      new WebViewClient() {
-
-                          @Override
-                          public void onPageFinished(
-                              WebView view,
-                              String url
-                          ) {
-
-                              view.postDelayed(
-                                  () -> renderPdf(
-                                      view,
-                                      destination
-                                  ),
-                                  400
-                              );
-                          }
+              private Bitmap decodeLogo(String dataUrl) {
+                  try {
+                      if (
+                          dataUrl == null ||
+                          dataUrl.isEmpty()
+                      ) {
+                          return null;
                       }
-                  );
 
-                  pdfWebView.loadDataWithBaseURL(
-                      null,
-                      pendingPdfHtml,
-                      "text/html",
-                      "UTF-8",
-                      null
+                      int comma = dataUrl.indexOf(',');
+
+                      String encoded =
+                          comma >= 0
+                              ? dataUrl.substring(comma + 1)
+                              : dataUrl;
+
+                      byte[] bytes = Base64.decode(
+                          encoded,
+                          Base64.DEFAULT
+                      );
+
+                      return BitmapFactory.decodeByteArray(
+                          bytes,
+                          0,
+                          bytes.length
+                      );
+
+                  } catch (Exception e) {
+                      return null;
+                  }
+              }
+
+              private String money(
+                  double value,
+                  String currency
+              ) {
+                  try {
+                      NumberFormat format =
+                          NumberFormat.getCurrencyInstance(
+                              Locale.US
+                          );
+
+                      if (
+                          currency != null &&
+                          !currency.isEmpty()
+                      ) {
+                          format.setCurrency(
+                              java.util.Currency.getInstance(
+                                  currency
+                              )
+                          );
+                      }
+
+                      return format.format(value);
+
+                  } catch (Exception e) {
+                      return String.format(
+                          Locale.US,
+                          "$%.2f",
+                          value
+                      );
+                  }
+              }
+
+              private void drawText(
+                  Canvas canvas,
+                  Paint paint,
+                  String text,
+                  float x,
+                  float y
+              ) {
+                  canvas.drawText(
+                      text == null ? "" : text,
+                      x,
+                      y,
+                      paint
                   );
               }
 
-              private void renderPdf(
-                  WebView view,
-                  Uri destination
+              private String ellipsize(
+                  Paint paint,
+                  String text,
+                  float maxWidth
               ) {
+                  if (text == null) {
+                      return "";
+                  }
+
+                  if (paint.measureText(text) <= maxWidth) {
+                      return text;
+                  }
+
+                  String suffix = "...";
+                  int end = text.length();
+
+                  while (
+                      end > 0 &&
+                      paint.measureText(
+                          text.substring(0, end) + suffix
+                      ) > maxWidth
+                  ) {
+                      end--;
+                  }
+
+                  return text.substring(
+                      0,
+                      Math.max(0, end)
+                  ) + suffix;
+              }
+
+              private void generateNativePdf(
+                  JSONObject data,
+                  File outputFile
+              ) throws Exception {
 
                   final int PAGE_WIDTH = 612;
                   final int PAGE_HEIGHT = 792;
 
-                  int widthSpec =
-                      View.MeasureSpec.makeMeasureSpec(
-                          PAGE_WIDTH,
-                          View.MeasureSpec.EXACTLY
-                      );
+                  JSONArray items =
+                      data.optJSONArray("items");
 
-                  int heightSpec =
-                      View.MeasureSpec.makeMeasureSpec(
-                          0,
-                          View.MeasureSpec.UNSPECIFIED
-                      );
+                  int itemCount =
+                      items == null ? 0 : items.length();
 
-                  view.measure(
-                      widthSpec,
-                      heightSpec
+                  float margin = 34f;
+
+                  float usableHeight =
+                      PAGE_HEIGHT - (margin * 2f);
+
+                  float headerHeight = 142f;
+                  float totalsHeight = 105f;
+
+                  float notesHeight =
+                      data.optString("notes", "")
+                          .trim()
+                          .isEmpty()
+                          ? 0f
+                          : 44f;
+
+                  float tableHeaderHeight = 24f;
+
+                  float remaining =
+                      usableHeight -
+                      headerHeight -
+                      totalsHeight -
+                      notesHeight -
+                      tableHeaderHeight;
+
+                  float rowHeight =
+                      itemCount > 0
+                          ? remaining / itemCount
+                          : 28f;
+
+                  rowHeight = Math.min(
+                      30f,
+                      Math.max(11f, rowHeight)
                   );
 
-                  int contentWidth =
-                      view.getMeasuredWidth();
-
-                  int contentHeight =
-                      view.getMeasuredHeight();
-
-                  if (contentHeight < 1) {
-                      contentHeight = PAGE_HEIGHT;
-                  }
-
-                  view.layout(
-                      0,
-                      0,
-                      contentWidth,
-                      contentHeight
+                  float fontSize = Math.min(
+                      10f,
+                      Math.max(
+                          5.8f,
+                          rowHeight * 0.40f
+                      )
                   );
-
-                  float scaleX =
-                      (float) PAGE_WIDTH /
-                      (float) contentWidth;
-
-                  float scaleY =
-                      (float) PAGE_HEIGHT /
-                      (float) contentHeight;
-
-                  float scale =
-                      Math.min(
-                          scaleX,
-                          scaleY
-                      );
 
                   PdfDocument document =
                       new PdfDocument();
 
                   PdfDocument.PageInfo pageInfo =
-                      new PdfDocument
-                          .PageInfo
-                          .Builder(
-                              PAGE_WIDTH,
-                              PAGE_HEIGHT,
-                              1
-                          )
-                          .create();
+                      new PdfDocument.PageInfo.Builder(
+                          PAGE_WIDTH,
+                          PAGE_HEIGHT,
+                          1
+                      ).create();
 
                   PdfDocument.Page page =
-                      document.startPage(
-                          pageInfo
+                      document.startPage(pageInfo);
+
+                  Canvas canvas = page.getCanvas();
+
+                  canvas.drawColor(Color.WHITE);
+
+                  Paint paint =
+                      new Paint(Paint.ANTI_ALIAS_FLAG);
+
+                  Paint bold =
+                      new Paint(Paint.ANTI_ALIAS_FLAG);
+
+                  bold.setTypeface(
+                      Typeface.create(
+                          Typeface.DEFAULT,
+                          Typeface.BOLD
+                      )
+                  );
+
+                  String currency =
+                      data.optString(
+                          "currency",
+                          "USD"
                       );
 
-                  Canvas canvas =
-                      page.getCanvas();
+                  JSONObject business =
+                      data.optJSONObject("business");
 
-                  canvas.drawColor(
-                      Color.WHITE
-                  );
+                  float y = margin;
 
-                  float scaledWidth =
-                      contentWidth * scale;
+                  Bitmap logo =
+                      business == null
+                          ? null
+                          : decodeLogo(
+                              business.optString(
+                                  "logo",
+                                  ""
+                              )
+                          );
 
-                  float left =
-                      Math.max(
-                          0,
-                          (PAGE_WIDTH - scaledWidth) / 2f
+                  float companyX = margin;
+
+                  if (logo != null) {
+                      int targetW = 86;
+                      int targetH = 52;
+
+                      Rect dst = new Rect(
+                          (int) margin,
+                          (int) y,
+                          (int) margin + targetW,
+                          (int) y + targetH
                       );
 
-                  canvas.save();
+                      canvas.drawBitmap(
+                          logo,
+                          null,
+                          dst,
+                          paint
+                      );
 
-                  canvas.translate(
-                      left,
-                      0
+                      companyX += 98f;
+                  }
+
+                  bold.setColor(
+                      Color.rgb(23, 32, 51)
                   );
 
-                  canvas.scale(
-                      scale,
-                      scale
+                  bold.setTextSize(18f);
+
+                  drawText(
+                      canvas,
+                      bold,
+                      business == null
+                          ? "Your Business"
+                          : business.optString(
+                              "name",
+                              "Your Business"
+                          ),
+                      companyX,
+                      y + 18f
                   );
 
-                  view.draw(canvas);
+                  paint.setColor(
+                      Color.rgb(102, 112, 133)
+                  );
 
-                  canvas.restore();
+                  paint.setTextSize(8.5f);
+
+                  float infoY = y + 34f;
+
+                  if (business != null) {
+                      String[] lines = new String[]{
+                          business.optString(
+                              "owner",
+                              ""
+                          ),
+                          business.optString(
+                              "address",
+                              ""
+                          ),
+                          business.optString(
+                              "phone",
+                              ""
+                          ) +
+                          (
+                              business.optString(
+                                  "email",
+                                  ""
+                              ).isEmpty()
+                                  ? ""
+                                  : " · " +
+                                    business.optString(
+                                        "email",
+                                        ""
+                                    )
+                          )
+                      };
+
+                      for (String line : lines) {
+                          if (
+                              line != null &&
+                              !line.trim().isEmpty()
+                          ) {
+                              drawText(
+                                  canvas,
+                                  paint,
+                                  ellipsize(
+                                      paint,
+                                      line,
+                                      260f
+                                  ),
+                                  companyX,
+                                  infoY
+                              );
+
+                              infoY += 12f;
+                          }
+                      }
+                  }
+
+                  float rightX =
+                      PAGE_WIDTH - margin;
+
+                  bold.setTextAlign(
+                      Paint.Align.RIGHT
+                  );
+
+                  bold.setTextSize(22f);
+
+                  drawText(
+                      canvas,
+                      bold,
+                      data.optString(
+                          "title",
+                          "INVOICE"
+                      ),
+                      rightX,
+                      y + 18f
+                  );
+
+                  paint.setTextAlign(
+                      Paint.Align.RIGHT
+                  );
+
+                  paint.setTextSize(8.5f);
+
+                  float metaY = y + 38f;
+
+                  String[] meta = new String[]{
+                      data.optString(
+                          "number",
+                          ""
+                      ),
+                      "Issued: " +
+                          data.optString(
+                              "issueDate",
+                              ""
+                          ),
+                      data.optString(
+                          "dateLabel",
+                          "Due"
+                      ) +
+                          ": " +
+                          data.optString(
+                              "dueDate",
+                              ""
+                          ),
+                      "Status: " +
+                          data.optString(
+                              "status",
+                              ""
+                          )
+                  };
+
+                  for (String line : meta) {
+                      drawText(
+                          canvas,
+                          paint,
+                          line,
+                          rightX,
+                          metaY
+                      );
+
+                      metaY += 12f;
+                  }
+
+                  paint.setTextAlign(
+                      Paint.Align.LEFT
+                  );
+
+                  bold.setTextAlign(
+                      Paint.Align.LEFT
+                  );
+
+                  y += 80f;
+
+                  paint.setColor(
+                      Color.rgb(23, 32, 51)
+                  );
+
+                  paint.setStrokeWidth(1.5f);
+
+                  canvas.drawLine(
+                      margin,
+                      y,
+                      PAGE_WIDTH - margin,
+                      y,
+                      paint
+                  );
+
+                  y += 24f;
+
+                  bold.setTextSize(9.5f);
+
+                  drawText(
+                      canvas,
+                      bold,
+                      "Bill to",
+                      margin,
+                      y
+                  );
+
+                  paint.setColor(
+                      Color.rgb(102, 112, 133)
+                  );
+
+                  paint.setTextSize(8.5f);
+
+                  y += 14f;
+
+                  drawText(
+                      canvas,
+                      paint,
+                      data.optString(
+                          "clientName",
+                          "Client"
+                      ),
+                      margin,
+                      y
+                  );
+
+                  String clientEmail =
+                      data.optString(
+                          "clientEmail",
+                          ""
+                      );
+
+                  if (!clientEmail.isEmpty()) {
+                      y += 12f;
+
+                      drawText(
+                          canvas,
+                          paint,
+                          clientEmail,
+                          margin,
+                          y
+                      );
+                  }
+
+                  y += 22f;
+
+                  float descX = margin;
+                  float qtyX = PAGE_WIDTH - 205f;
+                  float rateX = PAGE_WIDTH - 138f;
+                  float amountX = PAGE_WIDTH - margin;
+
+                  paint.setColor(
+                      Color.rgb(225, 229, 235)
+                  );
+
+                  canvas.drawRect(
+                      margin,
+                      y - 14f,
+                      PAGE_WIDTH - margin,
+                      y + 7f,
+                      paint
+                  );
+
+                  bold.setColor(
+                      Color.rgb(23, 32, 51)
+                  );
+
+                  bold.setTextSize(8f);
+
+                  drawText(
+                      canvas,
+                      bold,
+                      "Description",
+                      descX + 4f,
+                      y
+                  );
+
+                  drawText(
+                      canvas,
+                      bold,
+                      "Qty",
+                      qtyX,
+                      y
+                  );
+
+                  drawText(
+                      canvas,
+                      bold,
+                      "Rate",
+                      rateX,
+                      y
+                  );
+
+                  bold.setTextAlign(
+                      Paint.Align.RIGHT
+                  );
+
+                  drawText(
+                      canvas,
+                      bold,
+                      "Amount",
+                      amountX,
+                      y
+                  );
+
+                  bold.setTextAlign(
+                      Paint.Align.LEFT
+                  );
+
+                  y += 16f;
+
+                  paint.setTextSize(fontSize);
+
+                  paint.setColor(
+                      Color.rgb(35, 45, 62)
+                  );
+
+                  if (items != null) {
+                      for (
+                          int i = 0;
+                          i < items.length();
+                          i++
+                      ) {
+                          JSONObject item =
+                              items.getJSONObject(i);
+
+                          float baseline =
+                              y +
+                              Math.min(
+                                  rowHeight - 3f,
+                                  fontSize + 2f
+                              );
+
+                          String desc =
+                              ellipsize(
+                                  paint,
+                                  item.optString(
+                                      "description",
+                                      ""
+                                  ),
+                                  qtyX -
+                                      descX -
+                                      14f
+                              );
+
+                          drawText(
+                              canvas,
+                              paint,
+                              desc,
+                              descX + 4f,
+                              baseline
+                          );
+
+                          drawText(
+                              canvas,
+                              paint,
+                              String.valueOf(
+                                  item.optDouble(
+                                      "qty",
+                                      0
+                                  )
+                              ),
+                              qtyX,
+                              baseline
+                          );
+
+                          drawText(
+                              canvas,
+                              paint,
+                              money(
+                                  item.optDouble(
+                                      "rate",
+                                      0
+                                  ),
+                                  currency
+                              ),
+                              rateX,
+                              baseline
+                          );
+
+                          paint.setTextAlign(
+                              Paint.Align.RIGHT
+                          );
+
+                          drawText(
+                              canvas,
+                              paint,
+                              money(
+                                  item.optDouble(
+                                      "amount",
+                                      0
+                                  ),
+                                  currency
+                              ),
+                              amountX,
+                              baseline
+                          );
+
+                          paint.setTextAlign(
+                              Paint.Align.LEFT
+                          );
+
+                          paint.setColor(
+                              Color.rgb(
+                                  232,
+                                  235,
+                                  240
+                              )
+                          );
+
+                          canvas.drawLine(
+                              margin,
+                              y + rowHeight - 1f,
+                              PAGE_WIDTH - margin,
+                              y + rowHeight - 1f,
+                              paint
+                          );
+
+                          paint.setColor(
+                              Color.rgb(
+                                  35,
+                                  45,
+                                  62
+                              )
+                          );
+
+                          y += rowHeight;
+                      }
+                  }
+
+                  y += 12f;
+
+                  float totalLeft =
+                      PAGE_WIDTH - 210f;
+
+                  paint.setTextSize(8.5f);
+
+                  paint.setColor(
+                      Color.rgb(102, 112, 133)
+                  );
+
+                  String[] labels =
+                      new String[]{
+                          "Subtotal",
+                          "Discount",
+                          "Tax"
+                      };
+
+                  double[] values =
+                      new double[]{
+                          data.optDouble(
+                              "subtotal",
+                              0
+                          ),
+                          -data.optDouble(
+                              "discount",
+                              0
+                          ),
+                          data.optDouble(
+                              "tax",
+                              0
+                          )
+                      };
+
+                  for (
+                      int i = 0;
+                      i < labels.length;
+                      i++
+                  ) {
+                      drawText(
+                          canvas,
+                          paint,
+                          labels[i],
+                          totalLeft,
+                          y
+                      );
+
+                      paint.setTextAlign(
+                          Paint.Align.RIGHT
+                      );
+
+                      drawText(
+                          canvas,
+                          paint,
+                          money(
+                              values[i],
+                              currency
+                          ),
+                          amountX,
+                          y
+                      );
+
+                      paint.setTextAlign(
+                          Paint.Align.LEFT
+                      );
+
+                      y += 14f;
+                  }
+
+                  paint.setColor(
+                      Color.rgb(23, 32, 51)
+                  );
+
+                  canvas.drawLine(
+                      totalLeft,
+                      y - 4f,
+                      amountX,
+                      y - 4f,
+                      paint
+                  );
+
+                  bold.setTextSize(13f);
+
+                  drawText(
+                      canvas,
+                      bold,
+                      data.optString(
+                          "totalLabel",
+                          "Total"
+                      ),
+                      totalLeft,
+                      y + 13f
+                  );
+
+                  bold.setTextAlign(
+                      Paint.Align.RIGHT
+                  );
+
+                  drawText(
+                      canvas,
+                      bold,
+                      money(
+                          data.optDouble(
+                              "total",
+                              0
+                          ),
+                          currency
+                      ),
+                      amountX,
+                      y + 13f
+                  );
+
+                  bold.setTextAlign(
+                      Paint.Align.LEFT
+                  );
+
+                  String notes =
+                      data.optString(
+                          "notes",
+                          ""
+                      ).trim();
+
+                  if (
+                      !notes.isEmpty() &&
+                      y + 54f <
+                          PAGE_HEIGHT - margin
+                  ) {
+                      float notesY =
+                          Math.min(
+                              PAGE_HEIGHT -
+                                  margin -
+                                  25f,
+                              y + 42f
+                          );
+
+                      bold.setTextSize(8.5f);
+
+                      drawText(
+                          canvas,
+                          bold,
+                          "Notes",
+                          margin,
+                          notesY
+                      );
+
+                      paint.setTextSize(7.7f);
+
+                      paint.setColor(
+                          Color.rgb(
+                              102,
+                              112,
+                              133
+                          )
+                      );
+
+                      drawText(
+                          canvas,
+                          paint,
+                          ellipsize(
+                              paint,
+                              notes,
+                              PAGE_WIDTH -
+                                  (margin * 2f)
+                          ),
+                          margin,
+                          notesY + 13f
+                      );
+                  }
 
                   document.finishPage(page);
 
-                  try {
-
-                      FileOutputStream output =
-                          new FileOutputStream(
-                              getContentResolver()
-                                  .openFileDescriptor(
-                                      destination,
-                                      "w"
-                                  )
-                                  .getFileDescriptor()
-                          );
-
-                      document.writeTo(
-                          output
+                  FileOutputStream stream =
+                      new FileOutputStream(
+                          outputFile
                       );
 
-                      output.flush();
-                      output.close();
+                  document.writeTo(stream);
 
-                      Toast.makeText(
-                          this,
-                          "PDF saved successfully",
-                          Toast.LENGTH_LONG
-                      ).show();
+                  stream.flush();
+                  stream.close();
 
-                  } catch (Exception e) {
+                  document.close();
+              }
 
-                      Toast.makeText(
-                          this,
-                          "Could not save PDF",
-                          Toast.LENGTH_LONG
-                      ).show();
+              private void showPdfPreview(
+                  File pdfFile,
+                  String fileName
+              ) throws Exception {
 
-                  } finally {
-
-                      document.close();
-
-                      pdfWebView = null;
-
-                      pendingPdfHtml = null;
-
-                      pendingPdfName = null;
+                  if (
+                      previewDialog != null &&
+                      previewDialog.isShowing()
+                  ) {
+                      previewDialog.dismiss();
                   }
+
+                  ParcelFileDescriptor fd =
+                      ParcelFileDescriptor.open(
+                          pdfFile,
+                          ParcelFileDescriptor.MODE_READ_ONLY
+                      );
+
+                  PdfRenderer renderer =
+                      new PdfRenderer(fd);
+
+                  PdfRenderer.Page page =
+                      renderer.openPage(0);
+
+                  int width =
+                      Math.max(
+                          1080,
+                          page.getWidth() * 2
+                      );
+
+                  int height =
+                      Math.max(
+                          1400,
+                          page.getHeight() * 2
+                      );
+
+                  Bitmap bitmap =
+                      Bitmap.createBitmap(
+                          width,
+                          height,
+                          Bitmap.Config.ARGB_8888
+                      );
+
+                  bitmap.eraseColor(Color.WHITE);
+
+                  page.render(
+                      bitmap,
+                      null,
+                      null,
+                      PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
+                  );
+
+                  page.close();
+                  renderer.close();
+                  fd.close();
+
+                  previewDialog =
+                      new Dialog(
+                          this,
+                          android.R.style
+                              .Theme_Black_NoTitleBar_Fullscreen
+                      );
+
+                  LinearLayout root =
+                      new LinearLayout(this);
+
+                  root.setOrientation(
+                      LinearLayout.VERTICAL
+                  );
+
+                  root.setBackgroundColor(
+                      Color.rgb(24, 24, 24)
+                  );
+
+                  LinearLayout bar =
+                      new LinearLayout(this);
+
+                  bar.setGravity(
+                      Gravity.CENTER_VERTICAL
+                  );
+
+                  bar.setPadding(
+                      14,
+                      14,
+                      14,
+                      14
+                  );
+
+                  Button close =
+                      new Button(this);
+
+                  close.setText("Back");
+
+                  TextView title =
+                      new TextView(this);
+
+                  title.setText(fileName);
+                  title.setTextColor(Color.WHITE);
+                  title.setTextSize(16f);
+                  title.setPadding(
+                      16,
+                      0,
+                      16,
+                      0
+                  );
+
+                  Button save =
+                      new Button(this);
+
+                  save.setText("Save PDF");
+
+                  bar.addView(
+                      close,
+                      new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams
+                              .WRAP_CONTENT,
+                          LinearLayout.LayoutParams
+                              .WRAP_CONTENT
+                      )
+                  );
+
+                  bar.addView(
+                      title,
+                      new LinearLayout.LayoutParams(
+                          0,
+                          LinearLayout.LayoutParams
+                              .WRAP_CONTENT,
+                          1f
+                      )
+                  );
+
+                  bar.addView(
+                      save,
+                      new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams
+                              .WRAP_CONTENT,
+                          LinearLayout.LayoutParams
+                              .WRAP_CONTENT
+                      )
+                  );
+
+                  ScrollView scroll =
+                      new ScrollView(this);
+
+                  ImageView image =
+                      new ImageView(this);
+
+                  image.setImageBitmap(bitmap);
+                  image.setAdjustViewBounds(true);
+                  image.setBackgroundColor(
+                      Color.WHITE
+                  );
+
+                  image.setPadding(
+                      6,
+                      6,
+                      6,
+                      6
+                  );
+
+                  scroll.addView(
+                      image,
+                      new ScrollView.LayoutParams(
+                          ScrollView.LayoutParams
+                              .MATCH_PARENT,
+                          ScrollView.LayoutParams
+                              .WRAP_CONTENT
+                      )
+                  );
+
+                  root.addView(bar);
+
+                  root.addView(
+                      scroll,
+                      new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams
+                              .MATCH_PARENT,
+                          0,
+                          1f
+                      )
+                  );
+
+                  previewDialog.setContentView(root);
+
+                  close.setOnClickListener(
+                      v -> previewDialog.dismiss()
+                  );
+
+                  save.setOnClickListener(
+                      v -> launchSavePicker()
+                  );
+
+                  previewDialog.setOnDismissListener(
+                      dialog -> {
+                          if (!bitmap.isRecycled()) {
+                              bitmap.recycle();
+                          }
+                      }
+                  );
+
+                  previewDialog.show();
+
+                  Window window =
+                      previewDialog.getWindow();
+
+                  if (window != null) {
+                      window.setLayout(
+                          FrameLayout.LayoutParams
+                              .MATCH_PARENT,
+                          FrameLayout.LayoutParams
+                              .MATCH_PARENT
+                      );
+                  }
+              }
+
+              private void launchSavePicker() {
+                  if (
+                      currentPdfFile == null ||
+                      !currentPdfFile.exists() ||
+                      currentPdfFile.length() < 100
+                  ) {
+                      Toast.makeText(
+                          this,
+                          "PDF is not ready",
+                          Toast.LENGTH_SHORT
+                      ).show();
+
+                      return;
+                  }
+
+                  Intent intent =
+                      new Intent(
+                          Intent.ACTION_CREATE_DOCUMENT
+                      );
+
+                  intent.addCategory(
+                      Intent.CATEGORY_OPENABLE
+                  );
+
+                  intent.setType(
+                      "application/pdf"
+                  );
+
+                  intent.putExtra(
+                      Intent.EXTRA_TITLE,
+                      currentPdfName
+                  );
+
+                  startActivityForResult(
+                      intent,
+                      SAVE_PDF_REQUEST
+                  );
+              }
+
+              private void copyPdfToUri(
+                  Uri uri
+              ) throws Exception {
+
+                  FileInputStream input =
+                      new FileInputStream(
+                          currentPdfFile
+                      );
+
+                  OutputStream output =
+                      getContentResolver()
+                          .openOutputStream(
+                              uri,
+                              "w"
+                          );
+
+                  if (output == null) {
+                      input.close();
+
+                      throw new Exception(
+                          "Could not open destination"
+                      );
+                  }
+
+                  byte[] buffer =
+                      new byte[8192];
+
+                  int read;
+
+                  while (
+                      (read = input.read(buffer)) != -1
+                  ) {
+                      output.write(
+                          buffer,
+                          0,
+                          read
+                      );
+                  }
+
+                  output.flush();
+                  output.close();
+                  input.close();
               }
 
               @Override
               protected void onActivityResult(
-
                   int requestCode,
                   int resultCode,
                   Intent data
               ) {
 
                   if (
-                      requestCode ==
-                      FILE_REQUEST
+                      requestCode == FILE_REQUEST
                   ) {
-
                       Uri[] result = null;
 
                       if (
@@ -594,21 +1477,15 @@ jobs:
                           data != null &&
                           data.getData() != null
                       ) {
-
-                          result =
-                              new Uri[]{
-                                  data.getData()
-                              };
+                          result = new Uri[]{
+                              data.getData()
+                          };
                       }
 
-                      if (
-                          fileCallback != null
-                      ) {
-
-                          fileCallback
-                              .onReceiveValue(
-                                  result
-                              );
+                      if (fileCallback != null) {
+                          fileCallback.onReceiveValue(
+                              result
+                          );
 
                           fileCallback = null;
                       }
@@ -618,23 +1495,31 @@ jobs:
 
                   if (
                       requestCode ==
-                      PDF_REQUEST
+                          SAVE_PDF_REQUEST
                   ) {
-
                       if (
                           resultCode == RESULT_OK &&
                           data != null &&
                           data.getData() != null
                       ) {
+                          try {
+                              copyPdfToUri(
+                                  data.getData()
+                              );
 
-                          createPdf(
-                              data.getData()
-                          );
+                              Toast.makeText(
+                                  this,
+                                  "PDF saved",
+                                  Toast.LENGTH_LONG
+                              ).show();
 
-                      } else {
-
-                          pendingPdfHtml = null;
-                          pendingPdfName = null;
+                          } catch (Exception e) {
+                              Toast.makeText(
+                                  this,
+                                  "Could not save PDF",
+                                  Toast.LENGTH_LONG
+                              ).show();
+                          }
                       }
 
                       return;
@@ -650,22 +1535,23 @@ jobs:
               @Override
               public void onBackPressed() {
 
-                  webView.evaluateJavascript(
+                  if (
+                      previewDialog != null &&
+                      previewDialog.isShowing()
+                  ) {
+                      previewDialog.dismiss();
+                      return;
+                  }
 
-                      "window.handleAndroidBack ? window.handleAndroidBack() : false",
+                  webView.evaluateJavascript(
+                      "window.handleAndroidBack ? " +
+                      "window.handleAndroidBack() : false",
 
                       value -> {
-
                           if (!"true".equals(value)) {
-
-                              if (
-                                  webView.canGoBack()
-                              ) {
-
+                              if (webView.canGoBack()) {
                                   webView.goBack();
-
                               } else {
-
                                   MainActivity.super
                                       .onBackPressed();
                               }
