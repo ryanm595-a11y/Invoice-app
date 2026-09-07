@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>Invoice Maker</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#182033;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}.wrap{max-width:900px;margin:auto;padding:14px 14px 122px}.top{position:sticky;top:0;z-index:10;background:#f4f6f8;padding:14px;display:flex;align-items:center;gap:10px}.brand{flex:1}.brand small{font-size:9px;font-weight:800;letter-spacing:.12em;color:#7f8897}.brand h1{margin:2px 0 0;font-size:22px}.version{font-size:10px;background:#e9edf2;padding:5px 8px;border-radius:999px;color:#596579;font-weight:700}.btn{border:0;border-radius:10px;padding:10px 12px;font-weight:750}.primary{background:#111827;color:#fff}.secondary{background:#fff;border:1px solid #d9dee6;color:#243046}
+.card{background:#fff;border:1px solid #e1e5eb;border-radius:14px;margin-bottom:12px}.pad{padding:14px}.hero{background:#111827;color:#fff;border-radius:15px;padding:18px}.hero h2{margin:4px 0 0}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.stat{background:#fff;border:1px solid #e1e5eb;border-radius:12px;padding:12px}.stat small{color:#7c8695}.stat b{display:block;margin-top:4px}
+.row{display:flex;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid #eef1f4}.row:first-child{border-top:0}.grow{flex:1;min-width:0}.grow b,.grow span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.grow span{font-size:11px;color:#7c8695;margin-top:3px}.amount{text-align:right}.badge{display:inline-block;margin-top:4px;font-size:9px;border-radius:999px;padding:3px 7px;background:#edf1f5}.Paid,.Accepted{background:#e8f6ed;color:#18743b}.Overdue,.Declined{background:#fff0ee;color:#b13a31}.Sent{background:#edf4ff;color:#2b63a9}
+.field{display:block;margin-bottom:12px}.field span{display:block;font-size:9px;font-weight:800;color:#6f7a8a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;border:1px solid #d9dee6;border-radius:9px;padding:11px;background:#fff;outline:0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{display:grid;grid-template-columns:minmax(0,1fr) 52px 80px 72px 28px;gap:6px;align-items:center;margin-bottom:8px}.item input{min-width:0;width:100%;border:1px solid #d9dee6;border-radius:8px;padding:9px}.item .amt{text-align:right;font-size:11px;font-weight:800}.x{border:0;background:transparent;font-size:20px;color:#7d8797}
+.sum{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;color:#667185}.sum.total{border-top:1px solid #e4e8ed;margin-top:7px;padding-top:12px;font-size:17px;color:#111827}
+.logoBox{display:flex;gap:12px;align-items:center;margin-bottom:14px}.logoPreview{width:84px;height:84px;border:1px dashed #cbd2dc;border-radius:12px;background:#f8f9fb;display:grid;place-items:center;overflow:hidden}.logoPreview img{width:100%;height:100%;object-fit:contain}.logoPreview span{font-size:10px;color:#7c8695;text-align:center}.helper{font-size:11px;color:#7c8695;margin:4px 0 8px}
+.bottom{position:fixed;left:0;right:0;bottom:0;height:92px;padding-bottom:28px;background:#fff;border-top:1px solid #dfe3e9;display:flex;z-index:20}.bottom button{flex:1;border:0;background:transparent;color:#8490a1;font-size:8.5px;font-weight:750;padding:0 2px}.bottom button.active{color:#111827}.editbar{position:sticky;top:0;z-index:15;background:#fff;border-bottom:1px solid #e1e5eb;padding:10px 12px;display:flex;gap:8px;align-items:center}.editbar .push{margin-left:auto}.note{font-size:11px;color:#687386;background:#f0f3f6;padding:10px;border-radius:9px;margin-top:10px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.seg button{padding:11px;border:1px solid #d9dee6;background:#fff;border-radius:10px;font-weight:750}.seg button.active{background:#111827;color:#fff;border-color:#111827}
+@media(max-width:560px){.grid{grid-template-columns:1fr}.item{grid-template-columns:minmax(0,1fr) 46px 72px 62px 24px}.item input{font-size:12px;padding:8px}.top .btn{padding:9px 10px}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+"use strict";
+const APP_VERSION="4.0.0 APK";
+const KEY="never_forget_v2";
+const defaults={settings:{businessName:"Your Business",owner:"",email:"",phone:"",address:"",currency:"USD",prefix:"INV",quotePrefix:"QTE",logo:""},clients:[],invoices:[],quotes:[],migration:{records:[],lastImportAt:""}};
+
+function clone(x){return JSON.parse(JSON.stringify(x))}
+function load(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(KEY)||"{}");
+    const d=Object.assign(clone(defaults),raw);
+    d.settings=Object.assign({},defaults.settings,raw.settings||{});
+    d.clients=Array.isArray(raw.clients)?raw.clients:[];
+    d.invoices=Array.isArray(raw.invoices)?raw.invoices:[];
+    d.quotes=Array.isArray(raw.quotes)?raw.quotes:[];
+    d.migration=Object.assign({records:[],lastImportAt:""},raw.migration||{});
+    d.migration.records=Array.isArray(d.migration.records)?d.migration.records:[];
+    return d;
+  }catch(e){return clone(defaults)}
+}
+let db=load(), page="home", editing=null, editingType=null, deferredInstallPrompt=null;
+const app=document.getElementById("app");
+
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstallPrompt=e;if(page==="settings")render()});
+window.addEventListener("appinstalled",()=>{deferredInstallPrompt=null;if(page==="settings")render()});
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}))}
+
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function esc(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function num(v){const n=parseFloat(String(v).replace(/[^0-9.-]/g,""));return isFinite(n)?n:0}
+function money(v){try{return new Intl.NumberFormat(undefined,{style:"currency",currency:db.settings.currency||"USD"}).format(num(v))}catch(e){return "$"+num(v).toFixed(2)}}
+function today(){return new Date().toISOString().slice(0,10)}
+function totals(doc){const sub=(doc.items||[]).reduce((s,x)=>s+num(x.qty)*num(x.rate),0),disc=num(doc.discount),base=Math.max(0,sub-disc);const tax=(doc.taxAmountOverride!==undefined&&doc.taxAmountOverride!==null&&doc.taxAmountOverride!=="")?num(doc.taxAmountOverride):base*num(doc.tax)/100;return{sub,disc,tax,total:base+tax}}
+function listFor(type){return type==="quote"?db.quotes:db.invoices}
+function prefixFor(type){return type==="quote"?(db.settings.quotePrefix||"QTE"):(db.settings.prefix||"INV")}
+function nextNo(type){return prefixFor(type)+"-"+String(listFor(type).length+1).padStart(4,"0")}
+function label(type){return type==="quote"?"Quote":"Invoice"}
+
+function top(title,buttonType){
+ const button=buttonType?`<button class="btn primary" id="newDoc" data-type="${buttonType}">＋ ${label(buttonType)}</button>`:"";
+ return `<div class="top"><div class="brand"><small>INVOICE MAKER</small><h1>${esc(title)}</h1></div><span class="version">v${APP_VERSION}</span>${button}</div>`
+}
+function nav(){return `<div class="bottom">${[["home","Home"],["invoices","Invoices"],["quotes","Quotes"],["clients","Clients"],["migration","Migration"],["settings","Settings"]].map(x=>`<button data-nav="${x[0]}" class="${page===x[0]?"active":""}">${x[1]}</button>`).join("")}</div>`}
+function field(labelText,id,value,type="text"){return `<label class="field"><span>${esc(labelText)}</span><input id="${id}" type="${type}" value="${esc(value)}"></label>`}
+function row(doc,type){const t=totals(doc);return `<div class="row" data-open="${doc.id}" data-type="${type}"><div class="grow"><b>${esc(doc.number)}</b><span>${esc(doc.clientName||"No client")}</span></div><div class="amount"><b>${money(t.total)}</b><div class="badge ${esc(doc.status)}">${esc(doc.status)}</div></div></div>`}
+
+function home(){
+ const s=db.invoices.reduce((a,i)=>{const t=totals(i);a.all+=t.total;if(i.status==="Paid")a.paid+=t.total;else if(i.status!=="Cancelled")a.out+=t.total;return a},{all:0,paid:0,out:0});
+ return top("Dashboard","invoice")+`<main class="wrap"><section class="hero"><small>YOUR INVOICE WORKSPACE</small><h2>Simple invoicing, quotes, and records.</h2></section><section class="stats"><div class="stat"><small>Invoiced</small><b>${money(s.all)}</b></div><div class="stat"><small>Paid</small><b>${money(s.paid)}</b></div><div class="stat"><small>Outstanding</small><b>${money(s.out)}</b></div><div class="stat"><small>Quotes</small><b>${db.quotes.length}</b></div></section><section class="card"><div class="pad"><b>Recent invoices</b></div>${db.invoices.length?db.invoices.slice(0,8).map(i=>row(i,"invoice")).join(""):'<div class="pad helper">No invoices yet.</div>'}</section></main>`+nav()
+}
+function docsPage(type){
+ const list=listFor(type);
+ const plural=type==="quote"?"Quotes":"Invoices";
+ return top(plural,type)+`<main class="wrap"><section class="card"><div class="pad"><b>All ${plural.toLowerCase()}</b></div>${list.length?list.map(i=>row(i,type)).join(""):`<div class="pad helper">No ${plural.toLowerCase()} yet.</div>`}</section></main>`+nav()
+}
+function clients(){
+ return top("Clients")+`<main class="wrap"><section class="card pad">${field("Client name","cname","")}${field("Email","cemail","")}${field("Phone","cphone","")}<button class="btn primary" id="addClient">Add client</button></section><section class="card"><div class="pad"><b>Saved clients</b></div>${db.clients.length?db.clients.map(c=>`<div class="row"><div class="grow"><b>${esc(c.name)}</b><span>${esc(c.email||"")}${c.phone?" · "+esc(c.phone):""}</span></div><button class="x" data-delclient="${c.id}">×</button></div>`).join(""):'<div class="pad helper">No clients yet.</div>'}</section></main>`+nav()
+}
+function cents(v){return Math.round((num(v)+Number.EPSILON)*100)}
+function migrationStats(){
+ const r=db.migration.records||[];
+ return r.reduce((a,x)=>{a.total++;if(x.status==="verified")a.verified++;else if(x.status==="rejected")a.rejected++;else a.other++;return a},{total:0,verified:0,rejected:0,other:0})
+}
+function migrationPage(){
+ const s=migrationStats();
+ const recent=(db.migration.records||[]).slice(0,12);
+ return top("Bookipi Migration")+`<main class="wrap"><section class="hero"><small>STRICT SOURCE-VERIFIED IMPORT</small><h2>${s.verified} verified invoices imported</h2><div class="helper" style="color:#cbd5e1;margin-top:8px">The app rejects any invoice whose extracted line items and totals do not reconcile exactly.</div></section><section class="stats"><div class="stat"><small>Verified</small><b>${s.verified}</b></div><div class="stat"><small>Rejected</small><b>${s.rejected}</b></div><div class="stat"><small>Audit records</small><b>${s.total}</b></div><div class="stat"><small>Last import</small><b style="font-size:11px">${esc(db.migration.lastImportAt||"Never")}</b></div></section><section class="card pad"><b>Import verified Bookipi batch</b><div class="helper">Select a JSON batch produced by the Bookipi extraction agent. Existing invoice numbers are never overwritten silently.</div><label class="btn primary" style="display:inline-block">Choose JSON batch<input id="migrationFile" type="file" accept="application/json,.json" style="display:none"></label></section><section class="card"><div class="pad"><b>Recent migration audit</b></div>${recent.length?recent.map(x=>`<div class="row"><div class="grow"><b>#${esc(x.invoiceNumber||"")}</b><span>${esc(x.message||x.status||"")}</span></div><div class="badge ${x.status==="verified"?"Paid":"Overdue"}">${esc(x.status||"")}</div></div>`).join(""):'<div class="pad helper">No migration batches imported yet.</div>'}</section></main>`+nav()
+}
+function normalizeMigrationInvoice(src){
+ const items=(src.items||[]).map(x=>({id:id(),description:String(x.description||""),qty:String(x.qty??1),rate:String(x.rate??0),sourceAmount:num(x.amount)}));
+ return {id:id(),number:String(src.invoiceNumber??src.number??""),clientName:String(src.customerName??src.clientName??""),clientEmail:String(src.customerEmail??src.clientEmail??""),issueDate:String(src.issueDate||src.date||""),dueDate:String(src.dueDate||src.issueDate||src.date||""),status:String(src.status||"Paid"),items,discount:String(src.discountAmount??src.discount??0),tax:String(src.taxRate??0),taxAmountOverride:(src.taxAmount!==undefined?String(src.taxAmount):""),notes:String(src.notes||""),sourceMeta:{provider:"Bookipi",sourceUrl:String(src.sourceUrl||""),extractedAt:String(src.extractedAt||""),bookipiInvoiceId:String(src.bookipiInvoiceId||""),csvTotal:num(src.csvTotal),pageTotal:num(src.total),pageSubtotal:num(src.subtotal),pageTax:num(src.taxAmount),pageDiscount:num(src.discountAmount),verification:src.verification||{}}};
+}
+function verifyMigrationInvoice(src){
+ const errs=[];
+ if(!String(src.invoiceNumber??src.number??"").trim())errs.push("missing invoice number");
+ if(!Array.isArray(src.items)||!src.items.length)errs.push("no line items");
+ const lineSub=(src.items||[]).reduce((a,x)=>a+cents(num(x.qty)*num(x.rate)),0);
+ const declaredSub=cents(src.subtotal);
+ if(lineSub!==declaredSub)errs.push(`line subtotal ${lineSub/100} != page subtotal ${declaredSub/100}`);
+ (src.items||[]).forEach((x,i)=>{if(x.amount!==undefined&&cents(x.amount)!==cents(num(x.qty)*num(x.rate)))errs.push(`item ${i+1} amount mismatch`)});
+ const discount=cents(src.discountAmount||0),tax=cents(src.taxAmount||0),pageTotal=cents(src.total);
+ if(declaredSub-discount+tax!==pageTotal)errs.push("subtotal/discount/tax do not equal Bookipi total");
+ if(src.csvTotal!==undefined&&src.csvTotal!==null&&src.csvTotal!==""&&cents(src.csvTotal)!==pageTotal)errs.push("CSV total does not equal Bookipi total");
+ if(src.verification&&src.verification.pageReconciled===false)errs.push("agent page verification failed");
+ return errs;
+}
+function importMigrationBatch(payload){
+ const batch=Array.isArray(payload)?payload:(payload.invoices||[]);if(!Array.isArray(batch)||!batch.length)throw new Error("No invoices found in this JSON file.");
+ let ok=0,bad=0,dupe=0;
+ for(const src of batch){
+   const invoiceNumber=String(src.invoiceNumber??src.number??"").trim();
+   const errs=verifyMigrationInvoice(src);
+   if(db.invoices.some(i=>String(i.number)===invoiceNumber)){
+     db.migration.records.unshift({id:id(),invoiceNumber,status:"rejected",message:"Duplicate invoice number; existing record was left unchanged.",at:new Date().toISOString()});dupe++;continue;
+   }
+   if(errs.length){db.migration.records.unshift({id:id(),invoiceNumber,status:"rejected",message:errs.join("; "),at:new Date().toISOString()});bad++;continue}
+   const doc=normalizeMigrationInvoice(src);db.invoices.push(doc);
+   if(doc.clientName&&!db.clients.some(c=>c.name.trim().toLowerCase()===doc.clientName.trim().toLowerCase()))db.clients.push({id:id(),name:doc.clientName,email:doc.clientEmail||"",phone:String(src.customerPhone||"")});
+   db.migration.records.unshift({id:id(),invoiceNumber,status:"verified",message:`Imported and reconciled to ${money(src.total)}`,at:new Date().toISOString(),sourceUrl:String(src.sourceUrl||"")});ok++;
+ }
+ db.invoices.sort((a,b)=>String(b.issueDate||"").localeCompare(String(a.issueDate||""))||String(b.number).localeCompare(String(a.number)));
+ db.migration.lastImportAt=new Date().toLocaleString();save();return {ok,bad,dupe,total:batch.length};
+}
+function settings(){
+ const logo=db.settings.logo?`<img src="${esc(db.settings.logo)}" alt="Logo">`:`<span>No logo<br>selected</span>`;
+ const installed=!!window.Android;
+ const installBlock=installed
+   ? `<div class="note">✓ Local Android app. Your records are stored on this phone.</div>`
+   : `<div class="note">Web version. Install the APK for full local use.</div>`;
+ return top("Settings")+`<main class="wrap"><section class="card pad"><div class="logoBox"><div class="logoPreview">${logo}</div><div class="grow"><b>Business logo</b><div class="helper">PNG, JPG or WebP.</div><label class="btn secondary" style="display:inline-block">Choose logo<input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none"></label> <button class="btn secondary" id="removeLogo" type="button">Remove</button></div></div>${field("Business name","businessName",db.settings.businessName)}${field("Contact name","owner",db.settings.owner)}${field("Email","email",db.settings.email)}${field("Phone","phone",db.settings.phone)}<div class="grid">${field("Invoice prefix","prefix",db.settings.prefix)}${field("Quote prefix","quotePrefix",db.settings.quotePrefix)}</div><label class="field"><span>Currency</span><select id="currency">${["USD","CAD","GBP","EUR","AUD"].map(c=>`<option ${db.settings.currency===c?"selected":""}>${c}</option>`).join("")}</select></label><label class="field"><span>Address</span><textarea id="address" rows="4">${esc(db.settings.address)}</textarea></label><button class="btn primary" id="saveSettings">Save settings</button>${installBlock}</section></main>`+nav()
+}
+
+function newDoc(type){
+ const doc={id:id(),number:nextNo(type),clientName:"",clientEmail:"",issueDate:today(),dueDate:today(),status:"Draft",items:[{id:id(),description:"",qty:"1",rate:""}],discount:"0",tax:"0",notes:"Thank you for your business."};
+ listFor(type).unshift(doc);save();editing=doc.id;editingType=type;render()
+}
+function editor(){
+ const list=listFor(editingType),doc=list.find(x=>x.id===editing);if(!doc){editing=null;editingType=null;return render()}
+ const t=totals(doc),isQuote=editingType==="quote";
+ const statuses=isQuote?["Draft","Sent","Accepted","Declined"]:["Draft","Sent","Paid","Overdue","Cancelled"];
+ return `<div class="editbar"><button class="btn secondary" id="back">‹ Back</button><b>${isQuote?"QUOTE":"INVOICE"} ${esc(doc.number)}</b><span class="version">v${APP_VERSION}</span><button class="btn secondary" id="pdfDoc">View PDF</button><button class="btn primary push" id="saveDoc">Save</button></div><main class="wrap">${doc.sourceMeta?`<div class="note">✓ Verified Bookipi migration · Source total ${money(doc.sourceMeta.pageTotal)}${doc.sourceMeta.sourceUrl?` · Original source recorded`:``}</div>`:``}<section class="card pad"><div class="grid">${field((isQuote?"Quote":"Invoice")+" number","number",doc.number)}<label class="field"><span>Status</span><select id="status">${statuses.map(s=>`<option ${doc.status===s?"selected":""}>${s}</option>`).join("")}</select></label>${field("Issue date","issueDate",doc.issueDate,"date")}${field(isQuote?"Valid through":"Due date","dueDate",doc.dueDate,"date")}</div>${field("Client name","clientName",doc.clientName)}${field("Client email","clientEmail",doc.clientEmail)}<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0"><b>Items</b><button class="btn secondary" id="addItem">＋ Add item</button></div><div id="items">${doc.items.map(x=>`<div class="item" data-row="${x.id}"><input data-item="${x.id}" data-key="description" value="${esc(x.description)}" placeholder="Description"><input inputmode="decimal" data-item="${x.id}" data-key="qty" value="${esc(x.qty)}" placeholder="Qty"><input inputmode="decimal" data-item="${x.id}" data-key="rate" value="${esc(x.rate)}" placeholder="Rate"><span class="amt">${money(num(x.qty)*num(x.rate))}</span><button class="x" data-remove="${x.id}">×</button></div>`).join("")}</div><div class="grid"><label class="field"><span>Discount</span><input id="discount" inputmode="decimal" value="${esc(doc.discount)}"></label><label class="field"><span>Tax %</span><input id="tax" inputmode="decimal" value="${esc(doc.tax)}"></label></div><label class="field"><span>Notes</span><textarea id="notes" rows="4">${esc(doc.notes)}</textarea></label></section><section class="card pad" id="summary"><div class="sum"><span>Subtotal</span><b data-sum="sub">${money(t.sub)}</b></div><div class="sum"><span>Discount</span><b data-sum="disc">-${money(t.disc)}</b></div><div class="sum"><span>Tax</span><b data-sum="tax">${money(t.tax)}</b></div><div class="sum total"><span>${isQuote?"Grand Total":"Total"}</span><b data-sum="total">${money(t.total)}</b></div></section></main>`
+}
+function syncEditor(){
+ const doc=listFor(editingType).find(x=>x.id===editing);if(!doc)return;
+ ["number","status","issueDate","dueDate","clientName","clientEmail","discount","tax","notes"].forEach(k=>{const e=document.getElementById(k);if(e)doc[k]=e.value});save()
+}
+function updateSummary(){
+ const doc=listFor(editingType).find(x=>x.id===editing);if(!doc)return;const t=totals(doc);
+ const m={sub:money(t.sub),disc:"-"+money(t.disc),tax:money(t.tax),total:money(t.total)};
+ Object.keys(m).forEach(k=>{const e=document.querySelector(`[data-sum="${k}"]`);if(e)e.textContent=m[k]})
+}
+function printDoc(){
+ const doc=listFor(editingType).find(x=>x.id===editing);if(!doc)return;
+ syncEditor();
+ const t=totals(doc),isQuote=editingType==="quote";
+ const payload={
+   type:isQuote?"quote":"invoice",
+   title:isQuote?"QUOTE":"INVOICE",
+   totalLabel:isQuote?"Grand Total":"Total",
+   number:doc.number||"",
+   issueDate:doc.issueDate||"",
+   dueDate:doc.dueDate||"",
+   dateLabel:isQuote?"Valid through":"Due",
+   status:doc.status||"",
+   clientName:doc.clientName||"",
+   clientEmail:doc.clientEmail||"",
+   notes:doc.notes||"",
+   business:{
+     name:db.settings.businessName||"Your Business",
+     owner:db.settings.owner||"",
+     email:db.settings.email||"",
+     phone:db.settings.phone||"",
+     address:db.settings.address||"",
+     logo:db.settings.logo||""
+   },
+   currency:db.settings.currency||"USD",
+   items:(doc.items||[]).map(x=>({
+     description:x.description||"",
+     qty:num(x.qty),
+     rate:num(x.rate),
+     amount:num(x.qty)*num(x.rate)
+   })),
+   subtotal:t.sub,
+   discount:t.disc,
+   tax:t.tax,
+   total:t.total
+ };
+ if(window.Android && typeof Android.previewDocument==="function"){
+   Android.previewDocument(JSON.stringify(payload));
+   return;
+ }
+ alert("Native PDF preview is available in the Android APK.");
+}
+
+function bind(){
+ document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{page=b.dataset.nav;editing=null;editingType=null;render()});
+ const nd=document.getElementById("newDoc");if(nd)nd.onclick=()=>newDoc(nd.dataset.type);
+ document.querySelectorAll("[data-open]").forEach(r=>r.onclick=()=>{editing=r.dataset.open;editingType=r.dataset.type;render()});
+ const ac=document.getElementById("addClient");if(ac)ac.onclick=()=>{const name=document.getElementById("cname").value.trim();if(!name)return alert("Enter a client name.");db.clients.unshift({id:id(),name,email:document.getElementById("cemail").value.trim(),phone:document.getElementById("cphone").value.trim()});save();render()};
+ document.querySelectorAll("[data-delclient]").forEach(b=>b.onclick=()=>{db.clients=db.clients.filter(c=>c.id!==b.dataset.delclient);save();render()});
+ const mf=document.getElementById("migrationFile");if(mf)mf.onchange=()=>{const f=mf.files&&mf.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const result=importMigrationBatch(JSON.parse(r.result));alert(`Migration finished. Verified: ${result.ok}. Rejected: ${result.bad}. Duplicates: ${result.dupe}.`);render()}catch(e){alert("Import failed: "+e.message)}};r.readAsText(f)};
+ const lf=document.getElementById("logoFile");if(lf)lf.onchange=()=>{const f=lf.files&&lf.files[0];if(!f)return;if(f.size>2500000){alert("Please choose an image under 2.5 MB.");return}const r=new FileReader();r.onload=()=>{db.settings.logo=r.result;save();render()};r.readAsDataURL(f)};
+ const rl=document.getElementById("removeLogo");if(rl)rl.onclick=()=>{db.settings.logo="";save();render()};
+ const ss=document.getElementById("saveSettings");if(ss)ss.onclick=()=>{["businessName","owner","email","phone","prefix","quotePrefix"].forEach(k=>db.settings[k]=document.getElementById(k).value);db.settings.currency=document.getElementById("currency").value;db.settings.address=document.getElementById("address").value;save();alert("Saved.")};
+ const ia=document.getElementById("installApp");if(ia)ia.onclick=async()=>{if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;render()}else{alert("Use your browser menu and choose “Add to Home screen” or “Install app”. After installation, the app can run offline.")}};
+ const bk=document.getElementById("back");if(bk)bk.onclick=()=>{syncEditor();page=editingType==="quote"?"quotes":"invoices";editing=null;editingType=null;render()};
+ const pd=document.getElementById("pdfDoc");if(pd)pd.onclick=printDoc;
+ const sv=document.getElementById("saveDoc");if(sv)sv.onclick=()=>{syncEditor();page=editingType==="quote"?"quotes":"invoices";editing=null;editingType=null;render()};
+ const ai=document.getElementById("addItem");if(ai)ai.onclick=()=>{syncEditor();const doc=listFor(editingType).find(x=>x.id===editing);doc.items.push({id:id(),description:"",qty:"1",rate:""});save();render()};
+ document.querySelectorAll("[data-remove]").forEach(b=>b.onclick=()=>{syncEditor();const doc=listFor(editingType).find(x=>x.id===editing);if(doc.items.length>1)doc.items=doc.items.filter(x=>x.id!==b.dataset.remove);save();render()});
+ document.querySelectorAll("[data-item]").forEach(el=>el.addEventListener("input",()=>{const doc=listFor(editingType).find(x=>x.id===editing);if(!doc)return;const item=doc.items.find(x=>x.id===el.dataset.item);if(!item)return;item[el.dataset.key]=el.value;const row=el.closest("[data-row]");if(row){const amt=row.querySelector(".amt");if(amt)amt.textContent=money(num(item.qty)*num(item.rate))}updateSummary();save()}));
+ ["discount","tax"].forEach(k=>{const e=document.getElementById(k);if(e)e.addEventListener("input",()=>{const doc=listFor(editingType).find(x=>x.id===editing);if(!doc)return;doc[k]=e.value;updateSummary();save()})});
+}
+function render(){app.innerHTML=editing?editor():page==="home"?home():page==="invoices"?docsPage("invoice"):page==="quotes"?docsPage("quote"):page==="clients"?clients():page==="migration"?migrationPage():settings();bind()}
+window.handleAndroidBack=function(){
+ if(editing){syncEditor();page=editingType==="quote"?"quotes":"invoices";editing=null;editingType=null;render();return true}
+ if(page!=="home"){page="home";render();return true}
+ return false
+};
+render();
+})();
+</script>
+</body>
+</html>
