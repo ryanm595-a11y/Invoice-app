@@ -35,10 +35,6 @@ jobs:
 
           cp index.html app/src/main/assets/index.html
 
-          if [ -f icon-512.png ]; then
-            cp icon-512.png app/src/main/res/drawable/app_icon.png
-          fi
-
           cat > settings.gradle <<'EOF'
           pluginManagement {
               repositories {
@@ -79,8 +75,8 @@ jobs:
                   applicationId "com.neverforget.invoice"
                   minSdk 23
                   targetSdk 35
-                  versionCode 31
-                  versionName "3.1.0"
+                  versionCode 32
+                  versionName "3.2.0"
               }
           }
           EOF
@@ -90,8 +86,26 @@ jobs:
               <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
                   <item name="android:statusBarColor">#111827</item>
                   <item name="android:navigationBarColor">#111827</item>
+                  <item name="android:windowLightStatusBar">false</item>
               </style>
           </resources>
+          EOF
+
+          cat > app/src/main/res/drawable/app_icon.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+
+              <path
+                  android:fillColor="#111827"
+                  android:pathData="M0,0h108v108h-108z" />
+
+              <path
+                  android:fillColor="#FFFFFF"
+                  android:pathData="M28,28h8v52h-8zM36,28l24,52h-9l-23,-52zM52,28h8v52h-8zM67,28h8v52h-8zM75,28h20v8h-20zM75,49h16v8h-16z" />
+          </vector>
           EOF
 
           cat > app/src/main/AndroidManifest.xml <<'EOF'
@@ -124,9 +138,12 @@ jobs:
           package com.neverforget.invoice;
 
           import android.app.Activity;
+          import android.app.PrintManager;
+          import android.content.Context;
           import android.content.Intent;
           import android.net.Uri;
           import android.os.Bundle;
+          import android.webkit.JavascriptInterface;
           import android.webkit.ValueCallback;
           import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
@@ -138,7 +155,6 @@ jobs:
 
               private WebView webView;
               private ValueCallback<Uri[]> fileCallback;
-
               private static final int FILE_REQUEST = 1001;
 
               @Override
@@ -149,7 +165,6 @@ jobs:
                   setContentView(webView);
 
                   WebSettings settings = webView.getSettings();
-
                   settings.setJavaScriptEnabled(true);
                   settings.setDomStorageEnabled(true);
                   settings.setDatabaseEnabled(true);
@@ -158,13 +173,18 @@ jobs:
 
                   webView.setWebViewClient(new WebViewClient());
 
+                  webView.addJavascriptInterface(
+                      new AndroidBridge(),
+                      "Android"
+                  );
+
                   webView.setWebChromeClient(new WebChromeClient() {
 
                       @Override
                       public boolean onShowFileChooser(
                               WebView webView,
                               ValueCallback<Uri[]> newCallback,
-                              FileChooserParams fileChooserParams) {
+                              FileChooserParams params) {
 
                           if (fileCallback != null) {
                               fileCallback.onReceiveValue(null);
@@ -173,17 +193,18 @@ jobs:
                           fileCallback = newCallback;
 
                           try {
-                              Intent intent = fileChooserParams.createIntent();
-                              startActivityForResult(intent, FILE_REQUEST);
+                              startActivityForResult(
+                                  params.createIntent(),
+                                  FILE_REQUEST
+                              );
                               return true;
                           } catch (Exception e) {
-
                               fileCallback = null;
 
                               Toast.makeText(
-                                      MainActivity.this,
-                                      "Unable to open file picker",
-                                      Toast.LENGTH_SHORT
+                                  MainActivity.this,
+                                  "Unable to open file picker",
+                                  Toast.LENGTH_SHORT
                               ).show();
 
                               return false;
@@ -191,7 +212,58 @@ jobs:
                       }
                   });
 
-                  webView.loadUrl("file:///android_asset/index.html");
+                  webView.loadUrl(
+                      "file:///android_asset/index.html"
+                  );
+              }
+
+              public class AndroidBridge {
+
+                  @JavascriptInterface
+                  public void printHtml(final String html) {
+
+                      runOnUiThread(() -> {
+
+                          WebView printView =
+                              new WebView(MainActivity.this);
+
+                          printView.getSettings()
+                              .setJavaScriptEnabled(true);
+
+                          printView.setWebViewClient(
+                              new WebViewClient() {
+
+                                  @Override
+                                  public void onPageFinished(
+                                          WebView view,
+                                          String url) {
+
+                                      PrintManager manager =
+                                          (PrintManager)
+                                          getSystemService(
+                                              Context.PRINT_SERVICE
+                                          );
+
+                                      manager.print(
+                                          "Never Forget Document",
+                                          view.createPrintDocumentAdapter(
+                                              "Never Forget Document"
+                                          ),
+                                          null
+                                      );
+                                  }
+                              }
+                          );
+
+                          printView.loadDataWithBaseURL(
+                              null,
+                              html,
+                              "text/html",
+                              "UTF-8",
+                              null
+                          );
+                      });
+                  }
               }
 
               @Override
@@ -204,15 +276,19 @@ jobs:
 
                       Uri[] result = null;
 
-                      if (resultCode == RESULT_OK && data != null) {
-
-                          if (data.getData() != null) {
-                              result = new Uri[]{data.getData()};
-                          }
+                      if (
+                          resultCode == RESULT_OK &&
+                          data != null &&
+                          data.getData() != null
+                      ) {
+                          result =
+                              new Uri[]{data.getData()};
                       }
 
                       if (fileCallback != null) {
-                          fileCallback.onReceiveValue(result);
+                          fileCallback
+                              .onReceiveValue(result);
+
                           fileCallback = null;
                       }
 
@@ -220,9 +296,9 @@ jobs:
                   }
 
                   super.onActivityResult(
-                          requestCode,
-                          resultCode,
-                          data
+                      requestCode,
+                      resultCode,
+                      data
                   );
               }
 
